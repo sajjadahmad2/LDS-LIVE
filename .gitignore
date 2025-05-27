@@ -3,3 +3,5 @@
 .env
 /storage/*.key
 /public/storage
+1stbackup.sql
+1stpush2ndPhase.zip
