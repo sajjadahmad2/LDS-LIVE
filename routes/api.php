@@ -21,3 +21,5 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 Route::post('webhook/{campaign_id}', [WebhookController::class, 'handleWebhookUrl'])->name('api.webhook.lead');
 Route::middleware([])->get('agent/consent', [WebhookController::class, 'getAgentConsent'])->name('agent.consent');
 Route::post('webhook/contact', [WebhookController::class, 'Contactwebhook'])->name('api.webhook.content');
+Route::middleware([])->get('agent/carriertypes', [WebhookController::class, 'getAgentCarrierTypes'])->name('agent.carrier.type');
+

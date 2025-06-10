@@ -56,6 +56,27 @@ public function getAgentConsent(Request $request)
             'agent_data' => $agent,
         ]);
     }
+    public function getAgentCarrierTypes(Request $request)
+    {
+        $validated = $request->validate([
+            'email' => 'required|email',
+        ]);
+        $agent = Agent::where('email', $validated['email'])->first();
+        $formattedCarrierTypes = [];
+        $carrierTypes = AgentCarrierType::select('carrier_type')->where('agent_id', $agent->id)->get();
+        foreach ($carrierTypes as $type) {
+            $formattedCarrierTypes[] = [$type->carrier_type];
+        }
+        $agent->carrierType = $formattedCarrierTypes;
+        //dd($agent);
+        if (!$agent) {
+            return response()->json(['error' => 'Agent not found'], 404);
+        }
+        return response()->json([
+            'success' => true,
+            'agent_data' => $agent,
+        ]);
+    }
     public function handleWebhookUrl(Request $request, $campaignIdParam)
     {
         $data           = $request->all();
