@@ -9,6 +9,7 @@ use App\Models\CampaignAgent;        // Model for Contact table
 use App\Models\Contact;              // Model for User table
 use App\Models\Log as Logs;          // Model for ReserveContact table
 use App\Models\ProccessContact;      // Model for ReserveContact table
+use App\Models\AgentCarrierType;      // Model for Agent Carrier Type table
 use App\Models\ReserveContact;       // Model for the Campaign-Agent mapping
 use App\Models\SaveJobLog;          // For logging
 use App\Models\User;                 // For database queries
