@@ -354,13 +354,13 @@
 @include('admin.select2.scriptload', ['load' => ['datatable']])
     <script type="text/javascript">
             $(document).ready(function() {
-            initializeSelect2();
-            let $select = $('#carrier_type');
-            $select.select2({
-                tags: true,
-                width: '100%',
-                allowClear: true,
-                dropdownParent: $("#agentModal"),
+            // initializeSelect2();
+            // let $select = $('#carrier_type');
+            // $select.select2({
+            //     tags: true,
+            //     width: '100%',
+            //     allowClear: true,
+            //     dropdownParent: $("#agentModal"),
             });
 
             function makeSortable() {
@@ -707,5 +707,64 @@
                 }
             });
         }
+
+        $(document).ready(function() {
+    let $select = $('#carrier_type');
+    $select.select2({
+        tags: true,
+        width: '100%',
+        allowClear: true,
+        dropdownParent: $("#agentModal").length ? $("#agentModal") : $(document.body),
+    });
+    function updateDOMOrder(sortedValues) {
+        // Create new option list in sorted order for selected
+        let newOptionsHtml = '';
+        sortedValues.forEach(function(val) {
+            let $option = $select.find(`option[value="${val}"]`);
+            if ($option.length > 0) {
+                newOptionsHtml += `<option value="${val}" selected>${$option.text()}</option>`;
+            } else {
+                // In case it's a new tag
+                newOptionsHtml += `<option value="${val}" selected>${val}</option>`;
+            }
+        });
+        // Add unselected options back (to preserve all options)
+        $select.find('option:not(:selected)').each(function() {
+            newOptionsHtml += `<option value="${$(this).val()}">${$(this).text()}</option>`;
+        });
+        $select.html(newOptionsHtml);  // Replace options
+        $select.val(sortedValues).trigger('change.select2');  // Refresh selection
+    }
+    function makeSortable() {
+        let $selection = $select.next('.select2-container').find('.select2-selection__rendered');
+        if ($selection.hasClass('ui-sortable')) {
+            $selection.sortable('destroy');
+        }
+        $selection.sortable({
+            containment: "parent",
+            items: ".select2-selection__choice",
+            tolerance: 'pointer',
+            stop: function() {
+                let sortedValues = [];
+                $selection.children('.select2-selection__choice').each(function() {
+                    let text = $(this).attr('title').trim();
+                    let value = $select.find("option").filter(function() {
+                        return $(this).text().trim() === text;
+                    }).val() || text; // Fallback for new tag
+                    sortedValues.push(value);
+                });
+                if (sortedValues.length > 0) {
+                    updateDOMOrder(sortedValues);
+                }
+            }
+        });
+    }
+    // Trigger sortable on open/select/unselect
+    $select.on('select2:open select2:select select2:unselect', function() {
+        setTimeout(makeSortable, 10);
+    });
+    // Initial sortable setup
+    setTimeout(makeSortable, 100);
+});
     </script>
 @endsection

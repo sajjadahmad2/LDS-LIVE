@@ -18,23 +18,44 @@ use Illuminate\Support\Facades\DB;
 
 class WebhookController extends Controller
 {
-    public function getAgentConsent(Request $request)
+    // public function getAgentConsent(Request $request)
+    // {
+    //     // Validate the email input
+    //     $validated = $request->validate([
+    //         'email' => 'required|email',
+    //     ]);
+    //     $proccessContact = ProccessContact::where('email', $validated['email'])->first();
+    //     $agent           = Agent::where('id', $proccessContact->agent_id ?? '')->first();
+    //     if (! $agent) {
+    //         return response()->json(['error' => 'Agent not found'], 404);
+    //     }
+    //     return response()->json([
+    //         'success'    => true,
+    //         'agent_data' => $agent,
+    //     ]);
+    // }
+public function getAgentConsent(Request $request)
     {
-        // Validate the email input
         $validated = $request->validate([
             'email' => 'required|email',
         ]);
         $proccessContact = ProccessContact::where('email', $validated['email'])->first();
-        $agent           = Agent::where('id', $proccessContact->agent_id ?? '')->first();
-        if (! $agent) {
+        $agent = Agent::where('id', $proccessContact->agent_id ?? '')->first();
+        $formattedCarrierTypes = [];
+        $carrierTypes = AgentCarrierType::select('carrier_type')->where('agent_id', $agent->id)->get();
+        foreach ($carrierTypes as $type) {
+            $formattedCarrierTypes[] = [$type->carrier_type];
+        }
+        $agent->carrierType = $formattedCarrierTypes;
+        //dd($agent);
+        if (!$agent) {
             return response()->json(['error' => 'Agent not found'], 404);
         }
         return response()->json([
-            'success'    => true,
+            'success' => true,
             'agent_data' => $agent,
         ]);
     }
-
     public function handleWebhookUrl(Request $request, $campaignIdParam)
     {
         $data           = $request->all();
