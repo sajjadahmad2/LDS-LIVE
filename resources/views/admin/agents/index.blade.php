@@ -44,10 +44,10 @@
         </div>
         <div class='row'>
             <div class="col-md-2">
-            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#agentModal"
-                onclick="savaAgentData(0, '', '', '', '', '', '', '','','','',[], [],[],'','','','')">Add Agent</button>
-            <button type="button" class="btn btn-primary ml-3" data-bs-toggle="modal" data-bs-target="#agentUser">Agent
-                User</button>
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#agentModal"
+                    onclick="savaAgentData(0, '', '', '', '', '', '', '','','','',[], [],[],'','','','')">Add Agent</button>
+                <button type="button" class="btn btn-primary ml-3" data-bs-toggle="modal" data-bs-target="#agentUser">Agent
+                    User</button>
             </div>
             <div class="col-md-3">
                 <select class="form-select agent_ids" name="agent" id="agent_ids">
@@ -351,9 +351,9 @@
 @endsection
 @include('admin.select2.select2');
 @section('scripts')
-@include('admin.select2.scriptload', ['load' => ['datatable']])
+    @include('admin.select2.scriptload', ['load' => ['datatable']])
     <script type="text/javascript">
-            $(document).ready(function() {
+        $(document).ready(function() {
             // initializeSelect2();
             // let $select = $('#carrier_type');
             // $select.select2({
@@ -361,49 +361,48 @@
             //     width: '100%',
             //     allowClear: true,
             //     dropdownParent: $("#agentModal"),
-            });
-
-            function makeSortable() {
-                let $selection = $('.select2-selection__rendered');
-                $selection.sortable({
-                    containment: "parent",
-                    items: ".select2-selection__choice",
-                    stop: function() {
-                        let sortedValues = [];
-                        $selection.children('.select2-selection__choice').each(function() {
-                            let text = $(this).text().trim();
-                            let value = $select.find("option").filter(function() {
-                                return $(this).text().trim() === text;
-                            }).val();
-                            if (value) {
-                                sortedValues.push(value);
-                            }
-                        });
-
-                        // Prevent empty selection issue
-                        if (sortedValues.length > 0) {
-                            $select.val(sortedValues).trigger('change.select2');
-                        }
-                    }
-                }).addClass('sortable-selection');
-            }
-
-            // Apply sorting after Select2 is opened
-            $select.on('select2:open', function() {
-                setTimeout(makeSortable, 100);
-            });
-
-            // Keep sorting enabled after selection changes
-            $select.on('select2:select select2:unselect', function() {
-                setTimeout(makeSortable, 100);
-            });
-
-            // Ensure sorting works on page load
-            setTimeout(makeSortable, 500);
         });
+
+        function makeSortable() {
+            let $selection = $('.select2-selection__rendered');
+            $selection.sortable({
+                containment: "parent",
+                items: ".select2-selection__choice",
+                stop: function() {
+                    let sortedValues = [];
+                    $selection.children('.select2-selection__choice').each(function() {
+                        let text = $(this).text().trim();
+                        let value = $select.find("option").filter(function() {
+                            return $(this).text().trim() === text;
+                        }).val();
+                        if (value) {
+                            sortedValues.push(value);
+                        }
+                    });
+
+                    // Prevent empty selection issue
+                    if (sortedValues.length > 0) {
+                        $select.val(sortedValues).trigger('change.select2');
+                    }
+                }
+            }).addClass('sortable-selection');
+        }
+
+        // Apply sorting after Select2 is opened
+        $select.on('select2:open', function() {
+            setTimeout(makeSortable, 100);
+        });
+
+        // Keep sorting enabled after selection changes
+        $select.on('select2:select select2:unselect', function() {
+            setTimeout(makeSortable, 100);
+        });
+
+        // Ensure sorting works on page load
+        setTimeout(makeSortable, 500);
         $(document).ready(function() {
             // Initialize Select2
-            $('#carrier_type, #states, #destination_location, #agentaccess').select2({
+            $('#states, #destination_location, #agentaccess').select2({
                 tags: true,
                 width: '100%',
                 dropdownParent: $("#agentModal"),
@@ -579,7 +578,7 @@
                 $('#monthly_limit').val(monthly_limit);
                 $('#total_limit').val(total_limit);
                 let formattedConsent = consent.replace(/\\r\\n/g, '\n').replace(/\\n/g, '\n').replace(/"/g,
-                ' ');
+                    ' ');
                 console.log(formattedConsent);
                 $('#consent').val(formattedConsent);
                 // Populate the consent field
@@ -709,62 +708,64 @@
         }
 
         $(document).ready(function() {
-    let $select = $('#carrier_type');
-    $select.select2({
-        tags: true,
-        width: '100%',
-        allowClear: true,
-        dropdownParent: $("#agentModal").length ? $("#agentModal") : $(document.body),
-    });
-    function updateDOMOrder(sortedValues) {
-        // Create new option list in sorted order for selected
-        let newOptionsHtml = '';
-        sortedValues.forEach(function(val) {
-            let $option = $select.find(`option[value="${val}"]`);
-            if ($option.length > 0) {
-                newOptionsHtml += `<option value="${val}" selected>${$option.text()}</option>`;
-            } else {
-                // In case it's a new tag
-                newOptionsHtml += `<option value="${val}" selected>${val}</option>`;
-            }
-        });
-        // Add unselected options back (to preserve all options)
-        $select.find('option:not(:selected)').each(function() {
-            newOptionsHtml += `<option value="${$(this).val()}">${$(this).text()}</option>`;
-        });
-        $select.html(newOptionsHtml);  // Replace options
-        $select.val(sortedValues).trigger('change.select2');  // Refresh selection
-    }
-    function makeSortable() {
-        let $selection = $select.next('.select2-container').find('.select2-selection__rendered');
-        if ($selection.hasClass('ui-sortable')) {
-            $selection.sortable('destroy');
-        }
-        $selection.sortable({
-            containment: "parent",
-            items: ".select2-selection__choice",
-            tolerance: 'pointer',
-            stop: function() {
-                let sortedValues = [];
-                $selection.children('.select2-selection__choice').each(function() {
-                    let text = $(this).attr('title').trim();
-                    let value = $select.find("option").filter(function() {
-                        return $(this).text().trim() === text;
-                    }).val() || text; // Fallback for new tag
-                    sortedValues.push(value);
+            let $select = $('#carrier_type');
+            $select.select2({
+                tags: true,
+                width: '100%',
+                allowClear: true,
+                dropdownParent: $("#agentModal").length ? $("#agentModal") : $(document.body),
+            });
+
+            function updateDOMOrder(sortedValues) {
+                // Create new option list in sorted order for selected
+                let newOptionsHtml = '';
+                sortedValues.forEach(function(val) {
+                    let $option = $select.find(`option[value="${val}"]`);
+                    if ($option.length > 0) {
+                        newOptionsHtml += `<option value="${val}" selected>${$option.text()}</option>`;
+                    } else {
+                        // In case it's a new tag
+                        newOptionsHtml += `<option value="${val}" selected>${val}</option>`;
+                    }
                 });
-                if (sortedValues.length > 0) {
-                    updateDOMOrder(sortedValues);
-                }
+                // Add unselected options back (to preserve all options)
+                $select.find('option:not(:selected)').each(function() {
+                    newOptionsHtml += `<option value="${$(this).val()}">${$(this).text()}</option>`;
+                });
+                $select.html(newOptionsHtml); // Replace options
+                $select.val(sortedValues).trigger('change.select2'); // Refresh selection
             }
+
+            function makeSortable() {
+                let $selection = $select.next('.select2-container').find('.select2-selection__rendered');
+                if ($selection.hasClass('ui-sortable')) {
+                    $selection.sortable('destroy');
+                }
+                $selection.sortable({
+                    containment: "parent",
+                    items: ".select2-selection__choice",
+                    tolerance: 'pointer',
+                    stop: function() {
+                        let sortedValues = [];
+                        $selection.children('.select2-selection__choice').each(function() {
+                            let text = $(this).attr('title').trim();
+                            let value = $select.find("option").filter(function() {
+                                return $(this).text().trim() === text;
+                            }).val() || text; // Fallback for new tag
+                            sortedValues.push(value);
+                        });
+                        if (sortedValues.length > 0) {
+                            updateDOMOrder(sortedValues);
+                        }
+                    }
+                });
+            }
+            // Trigger sortable on open/select/unselect
+            $select.on('select2:open select2:select select2:unselect', function() {
+                setTimeout(makeSortable, 10);
+            });
+            // Initial sortable setup
+            setTimeout(makeSortable, 100);
         });
-    }
-    // Trigger sortable on open/select/unselect
-    $select.on('select2:open select2:select select2:unselect', function() {
-        setTimeout(makeSortable, 10);
-    });
-    // Initial sortable setup
-    setTimeout(makeSortable, 100);
-});
     </script>
 @endsection
