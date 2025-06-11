@@ -75,7 +75,7 @@ public function getAgentConsent(Request $request)
         }
         return response()->json([
             'success' => true,
-            'agent_data' => $agent,
+            'agent_carriers' => $formattedCarrierTypes,
         ]);
     }
     public function handleWebhookUrl(Request $request, $campaignIdParam)
