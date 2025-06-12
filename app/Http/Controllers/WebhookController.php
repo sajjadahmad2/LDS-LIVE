@@ -42,6 +42,9 @@ public function getAgentConsent(Request $request)
         ]);
         $proccessContact = ProccessContact::where('email', $validated['email'])->first();
         $agent = Agent::where('id', $proccessContact->agent_id ?? '')->first();
+        if (!$agent) {
+            return response()->json(['error' => 'Agent not found'], 404);
+        }
         $formattedCarrierTypes = [];
         $carrierTypes = AgentCarrierType::select('carrier_type')->where('agent_id', $agent->id)->get();
         foreach ($carrierTypes as $type) {
@@ -49,9 +52,7 @@ public function getAgentConsent(Request $request)
         }
         $agent->carrierType = $formattedCarrierTypes;
         //dd($agent);
-        if (!$agent) {
-            return response()->json(['error' => 'Agent not found'], 404);
-        }
+
         return response()->json([
             'success' => true,
             'agent_data' => $agent,
