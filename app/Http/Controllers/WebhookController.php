@@ -41,6 +41,9 @@ public function getAgentConsent(Request $request)
             'email' => 'required|email',
         ]);
         $proccessContact = ProccessContact::where('email', $validated['email'])->first();
+        if (!$proccessContact) {
+            return response()->json(['error' => 'Contact with this email is not found'], 404);
+        }
         $agent = Agent::where('id', $proccessContact->agent_id ?? '')->first();
         if (!$agent) {
             return response()->json(['error' => 'Agent not found'], 404);
