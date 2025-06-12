@@ -92,7 +92,7 @@ public function getAgentConsent(Request $request)
         $campaignId     = base64_decode($campaignIdParam);
         $requiredFields = ['email', 'state', 'type'];
         $dataKeys       = array_keys($data);
-        appendJobLog($contactId, 'Contact came  from source '. $data['contact_source'] ?? null. ' having the type '. $type.'  and the custom Type '. $customType);
+        appendJobLog($contactId, 'Contact came from source ' . ($data['contact_source'] ?? null) . ' having the type ' . ($type ?? null) . ' and the custom Type ' . ($customType ?? null));
         if ($type === 'ContactCreate') {
             return $this->handleContactCreateType($data, $dataKeys, $requiredFields, $contactId, $state, $request, $campaignId);
         }
