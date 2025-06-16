@@ -15,6 +15,8 @@ use App\Http\Controllers\CampaignController;
 use App\Http\Controllers\Admin\ReserveContactController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ContactController;
+use Illuminate\Support\Facades\Response;
+use Illuminate\Support\Facades\File;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -34,6 +36,17 @@ Route::get('/cache', function () {
 
     return '<h3>Caches have been cleared successfully!</h3>';
 });
+
+Route::get('/download-sql', function () {
+    $filePath = '/var/www/html/your-database-file.sql'; // Replace with your actual filename
+    $fileName = 'database-backup.sql'; // Desired download filename
+
+    if (!File::exists($filePath)) {
+        abort(404, 'SQL file not found.');
+    }
+
+    return Response::download($filePath, $fileName);
+});
 Route::get('/check/json/{email}', function ($email) {
     $contact=\App\Models\ProccessContact::where('email', $email)->first();
     if($contact){
@@ -45,10 +58,10 @@ Route::get('/check/json/{email}', function ($email) {
         }else{
             return 'Contact not found';
         }
-        
+
     }
 
-   
+
 });
 Route::middleware('auth' )->group(function () {
     Route::get('/filemanager', function () {
@@ -78,7 +91,7 @@ Route::middleware('auth')->group(function () {
         Route::delete('user/delete/{id}', [UserController::class, 'destroy'])->name('user.destroy');
         Route::post('/fetch/alluserlocation' , [UserController::class,'userFetchAllLocation']);
         Route::get('/agent/user/', [AgentController::class, 'agentUser'])->name('agent.user');
-        Route::POST('/agent/user/', [AgentController::class, 'agentUserSave'])->name('agent.user.save'); 
+        Route::POST('/agent/user/', [AgentController::class, 'agentUserSave'])->name('agent.user.save');
         Route::get('/log' , [ReserveContactController::class,'log'])->name('log.index');
         //Agent route
         Route::get('agent/status/{id?}', [AgentController::class, 'agent'])->name('agent.status');
@@ -93,7 +106,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/sent/contacts' , [ContactController::class,'index'])->name('sent.contact');
         Route::get('/campaign/show' , [CampaignController::class,'campaignShow'])->name('campaign.show');
         Route::get('state/reserve/{state?}',[ReserveContactController::class,'fetchState']);
-        Route::post('/assign-agent', [ReserveContactController::class, 'assignAgent']); 
+        Route::post('/assign-agent', [ReserveContactController::class, 'assignAgent']);
         //fro Searching
         Route::get('/search/agent/', [AgentController::class, 'searchAgentByAjax'])->name('agent.search');
         Route::get('/search/state/', [StateController::class, 'searchStateByAjax'])->name('state.search');
