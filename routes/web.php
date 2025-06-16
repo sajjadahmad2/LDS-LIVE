@@ -38,7 +38,8 @@ Route::get('/cache', function () {
 });
 
 Route::get('/download-sql', function () {
-    $filePath = '/var/www/html/your-database-file.sql'; // Replace with your actual filename
+       set_time_limit(0);
+    $filePath = '/var/www/html/xl_lead_distribution.sql'; // Replace with your actual filename
     $fileName = 'database-backup.sql'; // Desired download filename
 
     if (!File::exists($filePath)) {
