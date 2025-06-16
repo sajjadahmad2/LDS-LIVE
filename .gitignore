@@ -8,3 +8,4 @@
 /storage/framework/sessions/
 /bootstrap
 bootstrap/cache/packages.php
+/composer.lock
