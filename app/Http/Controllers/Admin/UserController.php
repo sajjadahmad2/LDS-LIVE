@@ -362,7 +362,7 @@ class UserController extends Controller
                         $userToken->save();
                     }
 
-                    $apicall = \CRM::crmV2($user->id, 'customFields?model=contact', 'get', '', [], false, $userToken->location_id ?? null, $userToken);
+                    $apicall = \CRM::crmV2($user->id, 'customFields?model=contact&limit=200', 'get', '', [], false, $userToken->location_id ?? null, $userToken);
 
                     if (isset($apicall->customFields)) {
                         foreach ($apicall->customFields as $field) {
