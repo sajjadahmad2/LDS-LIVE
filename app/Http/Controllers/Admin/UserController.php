@@ -325,28 +325,28 @@ class UserController extends Controller
         $request->validate([
             'location_id' => 'required|string'
         ]);
-    
+
         set_time_limit(0);
-    
+
         $locationId = $request->location_id;
         $users = User::where('location_id', $locationId)->get();
-    
+
         if ($users->isEmpty()) {
             return response()->json(['message' => 'No users found for this location'], 404);
         }
-    
+
         $token = GhlAuth::where('user_type', 'Company')->first();
-    
+
         // Start Database Transaction
         DB::beginTransaction();
         try {
             foreach ($users as $user) {
                 $connectuid = $user->id;
                 $locationData = \CRM::connectLocation($token->user_id, $user->location_id, $token, $connectuid);
-    
+
                 if (isset($locationData->location_id)) {
                     $locationDetail = \CRM::crmV2($user->user_id, 'locations/' . $user->location_id, 'get', '', [], false, $token->location_id, $token);
-    
+
                     if (isset($locationDetail->location)) {
                         $subAccountDetail = $locationDetail->location;
                         $user->update([
@@ -354,22 +354,22 @@ class UserController extends Controller
                             'email' => $subAccountDetail->email ?? $user->email,
                         ]);
                     }
-    
+
                     $userToken = GhlAuth::where('user_id', $user->id)->first();
                     if ($userToken) {
                         $userToken->name = $user->name ?? null;
                         $userToken->user_id = $user->id ?? null;
                         $userToken->save();
                     }
-    
+
                     $apicall = \CRM::crmV2($user->id, 'customFields?model=contact', 'get', '', [], false, $userToken->location_id ?? null, $userToken);
-    
+
                     if (isset($apicall->customFields)) {
                         foreach ($apicall->customFields as $field) {
                             $customField = CustomField::where('cf_id', $field->id)
                                 ->where('location_id', $field->locationId)
                                 ->first();
-    
+
                             if ($customField) {
                                 $customField->cf_id = $field->id ?? null;
                                 $customField->cf_name = $field->name ?? null;
@@ -390,15 +390,15 @@ class UserController extends Controller
                     }
                 }
             }
-    
+
             // ✅ Commit Transaction (Save Changes)
             DB::commit();
-    
-            return response()->json(['message' => 'Custom fields synced successfully']);
+
+            return response()->json(['data' => json_encode($apicall),'message' => 'Custom fields synced successfully']);
         } catch (\Exception $e) {
             // ❌ Rollback Transaction (Undo Changes)
             DB::rollBack();
-    
+
             return response()->json(['message' => 'An error occurred: ' . $e->getMessage()], 500);
         }
     }
@@ -408,17 +408,17 @@ class UserController extends Controller
             'customfield_id' => 'required|string|exists:custom_fields,cf_id',
             'customfield_name' => 'required|string'
         ]);
-    
+
         try {
             $customField = CustomField::where('cf_id', $request->customfield_id)->first();
-    
+
             if (!$customField) {
                 return response()->json(['message' => 'Custom field not found'], 404);
             }
-    
+
             $customField->cf_name = $request->customfield_name;
             $customField->save();
-    
+
             return response()->json(['message' => 'Custom field updated successfully']);
         } catch (\Exception $e) {
             return response()->json(['message' => 'An error occurred: ' . $e->getMessage()], 500);
