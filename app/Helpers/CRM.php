@@ -372,6 +372,7 @@ class CRM
 
     public static function isExpired($bd)
     {
+        dd($bd->error);
         return (isset($bd->error) && strtolower($bd->error) == 'unauthorized' && stripos($bd->error, 'authclass') === false ) ||  (isset($bd->message) && !is_object($bd->message) && strtolower($bd->message) == 'invalid jwt');
     }
 
@@ -382,16 +383,16 @@ class CRM
         if (!$company_id) {
             return self::$no_record;
         }
-        
+
         if (!$location) {
-        
+
             $location = self::getLocationToken($company_id, $location_id);
 
             if (!$location) {
                 return self::$no_record;
             }
         }
-   
+
 
         $main_url = static::$base_url;
         //dd($main_url);
@@ -457,7 +458,7 @@ class CRM
                     $urlpart .= $lastsl;
                 }
                 $url = $urlpart . $sep . $slash[1];
-                
+
             } else {
                 $lastindex = substr($url, -1);
                 if ($lastindex != $lastsl) {
