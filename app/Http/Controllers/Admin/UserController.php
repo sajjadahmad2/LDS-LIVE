@@ -394,7 +394,7 @@ class UserController extends Controller
             // ✅ Commit Transaction (Save Changes)
             DB::commit();
 
-            return response()->json(['data' => json_encode($apicall),'message' => 'Custom fields synced successfully']);
+            return response()->json(['data' => $apicall,'message' => 'Custom fields synced successfully']);
         } catch (\Exception $e) {
             // ❌ Rollback Transaction (Undo Changes)
             DB::rollBack();
