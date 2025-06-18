@@ -363,7 +363,7 @@ class UserController extends Controller
                     }
 
                     $apicall = \CRM::crmV2($user->id, 'customFields?model=contact', 'get', '', [], false, $userToken->location_id ?? null, $userToken);
-
+                    $arraydata[]= $apicall;
                     if (isset($apicall->customFields)) {
                         foreach ($apicall->customFields as $field) {
                             $customField = CustomField::where('cf_id', $field->id)
