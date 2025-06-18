@@ -279,7 +279,7 @@ class DashboardController extends Controller
             try {
                 $data = CustomField::get();
                 return response()->json([
-                    'error' => 'Something went wrong: ' . $data
+                    'error' =>  json_decode(json_encode($data), true)
                 ], 500);
                 return DataTables::of($data)
                     ->addIndexColumn()
