@@ -29,7 +29,7 @@ class DashboardController extends Controller
         $dateRange  = $request->query('dateRange');
         $agentId    = $request->query('agentId');
         $campaignId = $request->query('campaignId');
-    
+
         // Handle date range (optional)
         if ($dateRange) {
             $dates     = explode(' - ', $dateRange);
@@ -39,7 +39,7 @@ class DashboardController extends Controller
             $startDate = null;
             $endDate   = null;
         }
-    
+
         // **Check if No Filter is Applied**
         if (! $type && ! $dateRange && (! $agentId || $agentId == 'all') && (! $campaignId || $campaignId == 'all')) {
             // Fetch default data (previously `index()`)
@@ -57,10 +57,10 @@ class DashboardController extends Controller
                 $campaigns   = Campaign::with(['agents'])->whereIn('id', $agents->pluck('id'))->get();
                 $data        = $this->getAgentStatsQuery(login_id())->get();
             }
-    
+
             return view('admin.dashboard', compact('agents', 'campaigns', 'data'));
         }
-    
+
         // **If Filters are Applied**
         $data = null;
         if ($type === "agent" || $type === "campaign") {
@@ -72,13 +72,13 @@ class DashboardController extends Controller
                     'data'    => $data,
                 ], 200);
             }
-    
+
             if (! is_null($campaignId) && (is_null($agentId) || $agentId == 'all')) {
                 $agentId = CampaignAgent::where('campaign_id', $campaignId)->pluck('agent_id')->toArray();
             } else {
                 $agentId = is_array($agentId) ? $agentId : [$agentId];
             }
-    
+
             // Query for agents
             $query = Agent::select(
                 'agents.id',
@@ -103,29 +103,29 @@ class DashboardController extends Controller
                     'agents.total_limit',
                     'agents.name'
                 );
-    
+
             // Apply date filter only if provided
             if (!empty($startDate) && !empty($endDate)) {
                 $query->whereBetween('agents.created_at', [$startDate, $endDate]);
             }
-    
+
             $data = $query
                 ->orderBy('agents.priority', 'asc')
                 ->orderByRaw('(agents.monthly_limit - monthly_contacts_count) desc')
                 ->orderByRaw('(agents.daily_limit - daily_contacts_count) desc')
                 ->orderByRaw('(agents.total_limit - total_contacts_count) desc')
                 ->get();
-    
+
             return response()->json([
                 'success' => true,
                 'message' => "$type data fetched successfully.",
                 'data'    => $data,
             ], 200);
         }
-    
+
         return view('admin.dashboard', compact('agents', 'campaign', 'data'));
     }
-    
+
     public function agentCompaignSearch(Request $request)
     {
         // Retrieve parameters from the query string
@@ -278,6 +278,9 @@ class DashboardController extends Controller
         if ($request->ajax()) {
             try {
                 $data = CustomField::get();
+                return response()->json([
+                    'error' => 'Something went wrong: ' . $data
+                ], 500);
                 return DataTables::of($data)
                     ->addIndexColumn()
                     ->make(true);
