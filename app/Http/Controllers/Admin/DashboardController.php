@@ -278,9 +278,9 @@ class DashboardController extends Controller
         if ($request->ajax()) {
             try {
                 $data = CustomField::get();
-                return response()->json([
-                    'error' =>  json_decode(json_encode($data), true)
-                ], 500);
+                // return response()->json([
+                //     'error' =>  json_decode(json_encode($data), true)
+                // ], 500);
                 return DataTables::of($data)
                     ->addIndexColumn()
                     ->make(true);
