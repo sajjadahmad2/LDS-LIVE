@@ -62,4 +62,8 @@ class ReserveContact extends Model
     {
         return $this->hasMany(Agent::class, 'agent_id');
     }
+    public function campaign()
+    {
+        return $this->belongsTo(Campaign::class);
+    }
 }

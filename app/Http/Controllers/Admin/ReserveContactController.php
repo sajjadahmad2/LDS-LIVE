@@ -19,12 +19,14 @@ class ReserveContactController extends Controller
     {
         if ($request->ajax()) {
             try {
-                $data = ReserveContact::select('id', 'phone', 'email', 'created_at', 'first_name','contact_id', 'state')
+                $data = ReserveContact::with('campaign:id,campaign_name')->select('id', 'phone', 'email', 'created_at', 'first_name','contact_id', 'state', 'campaign_id')
                     ->where('status', 'Not Sent')
                     ->orderBy('id', 'desc');
                 return DataTables::of($data)
                     ->addIndexColumn()
-
+                    ->editColumn('campaign_id', function ($row) {
+                        return $row->campaign ? $row->campaign->campaign_name : ''; ;
+                    })
                     ->addColumn('action', function ($row) {
                         $btn = '<div class="row row-cols-auto g-3">';
                         // Send button

@@ -12,18 +12,24 @@ class ContactController extends Controller
     public function index(Request $request)
     {
         ini_set('memory_limit', '-1');
-    
+
         if ($request->ajax()) {
             try {
-                $query = Contact::with('agent:id,name')
-                    ->select(['id', 'first_name', 'last_name', 'email', 'phone', 'state', 'created_at','contact_id', 'agent_id'])
+                $query = Contact::with([
+        'agent:id,name',
+        'campaign:id,campaign_name'
+    ])
+                    ->select(['id', 'first_name', 'last_name', 'email', 'phone', 'state', 'created_at','contact_id', 'agent_id','campaign_id'])
                     ->where('status', 'Sent')
                     ->orderBy('id', 'desc');
-    
+
                 return DataTables::of($query)
                     ->addIndexColumn()
                     ->editColumn('agent_id', function ($row) {
                         return $row->agent ? $row->agent->name : '';
+                    })
+                    ->editColumn('campaign_id', function ($row) {
+                        return $row->campaign ? $row->campaign->campaign_name : '';
                     })
                     ->editColumn('first_name', function ($row) {
                         return $row->first_name . ' ' . $row->last_name;
@@ -41,6 +47,8 @@ class ContactController extends Controller
                                   ->orWhere('state', 'LIKE', "%{$searchValue}%")
                                   ->orWhereHas('agent', function ($subQuery) use ($searchValue) {
                                       $subQuery->where('name', 'LIKE', "%{$searchValue}%");
+                                  })->orWhereHas('campaign', function ($subQuery) use ($searchValue) {
+                                      $subQuery->where('campaign_name', 'LIKE', "%{$searchValue}%");
                                   });
                             });
                         }
@@ -52,8 +60,8 @@ class ContactController extends Controller
                 ], 500);
             }
         }
-    
+
         return view('admin.contact.index');
     }
-    
+
 }

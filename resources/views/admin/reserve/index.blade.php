@@ -44,6 +44,7 @@
                             <th>Email</th>
                             <th>Phone</th>
                             <th>State</th>
+                            <th>Campaign</th>
                             <th>Created At</th>
                             <th>Action</th>
                         </tr>
@@ -126,10 +127,14 @@
                         name: 'state'
                     },
                     {
+                        data: 'campaign_id',
+                        name: 'campaign_id'
+                    },
+                    {
                         data: 'created_at',
                         name: 'created_at',
                         render: function(data, type, row) {
-                            return moment(data).format('YYYY-MM-DD hh:mm A'); 
+                            return moment(data).format('YYYY-MM-DD hh:mm A');
                         }
                     },
                     {

@@ -46,7 +46,7 @@
                             <th>State</th>
                             <th>Created At</th>
                             <th>Agent</th>
-
+                            <th>Campaign</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
@@ -76,6 +76,7 @@
                 { data: 'state', name: 'state' },
                 { data: 'created_at', name: 'created_at' },
                 { data: 'agent_id', name: 'agent_id' },
+                { data: 'campaign_id', name: 'campaign_id' },
             ]
         });
         } else {
