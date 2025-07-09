@@ -97,6 +97,28 @@ Route::middleware('auth')->group(function () {
         //Agent route
         Route::get('agent/status/{id?}', [AgentController::class, 'agent'])->name('agent.status');
         Route::get('/compaign/agent/', [AgentController::class, 'agentCompaignSearch'])->name('agent.compaign');
+                Route::get('/get-carrier-types', function (Request $request) {
+            $allTypes = getCarrierType();
+            $search   = strtolower($request->get('q', ''));
+
+            // Filter by query if provided
+            $filtered = array_filter($allTypes, function ($type) use ($search) {
+                return $search === '' || str_contains(strtolower($type), $search);
+            });
+
+            // Return in Select2 format
+            $results = array_map(function ($type) {
+                return [
+                    'id'   => $type,
+                    'text' => $type,
+                ];
+            }, $filtered);
+
+            return response()->json([
+                'results'    => array_values($results),
+                'pagination' => ['more' => false],
+            ]);
+        })->name('getCarrierTypes');
         // Resource routes for states, agents, and campaigns
         Route::resource('states', StateController::class);
         Route::get('save-or-update', [StateController::class,'saveOrUpdateState']);

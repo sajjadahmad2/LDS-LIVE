@@ -31,7 +31,7 @@ class ReserveContactController extends Controller
                         }
                         $dropdown .= '</select>';
 
-                        return $dropdown; 
+                        return $dropdown;
                     })
                     ->addColumn('action', function ($row) {
                         $btn = '<div class="row row-cols-auto g-3">';
@@ -57,7 +57,7 @@ class ReserveContactController extends Controller
     public function log(Request $request) {
         if ($request->ajax()) {
             try {
-                $data = Log::select(['id', 'contact_id', 'name', 'email', 'state', 'reason', 'message'])->orderBy('id', 'desc');
+                $data = Log::select(['id', 'contact_id', 'name', 'email', 'state', 'reason'])->orderBy('id', 'desc');
                 return DataTables::of($data)->make(true);
             } catch (\Exception $e) {
                 return response()->json([

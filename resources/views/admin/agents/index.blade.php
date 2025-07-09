@@ -9,6 +9,38 @@
             white-space: nowrap;
             max-width: 390px;
         }
+
+        <style>.select2-container--default .select2-selection--multiple {
+            border-radius: 6px;
+            padding: 5px;
+            min-height: 38px;
+        }
+
+        .select2-container--default .select2-selection--single {
+            border-radius: 6px;
+            min-height: 38px;
+            padding: 6px 12px;
+        }
+
+        .select2-results__options {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        /* Add space between label and input */
+        .form-label {
+            font-weight: 600;
+            margin-bottom: 0.3rem;
+        }
+
+        /* Optional: Beautify the loader inside modal */
+        .lds-roller.loader {
+            position: absolute;
+            top: 40%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 9999;
+        }
     </style>
 @endsection
 
@@ -44,10 +76,10 @@
         </div>
         <div class='row'>
             <div class="col-md-2">
-            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#agentModal"
-                onclick="savaAgentData(0, '', '', '', '', '', '', '','','','',[], [],[],'','','','')">Add Agent</button>
-            <button type="button" class="btn btn-primary ml-3" data-bs-toggle="modal" data-bs-target="#agentUser">Agent
-                User</button>
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#agentModal"
+                    onclick="savaAgentData(0, '', '', '', '', '', '', '','','','',[], [],[],'','','','')">Add Agent</button>
+                <button type="button" class="btn btn-primary ml-3" data-bs-toggle="modal" data-bs-target="#agentUser">Agent
+                    User</button>
             </div>
             <div class="col-md-3">
                 <select class="form-select agent_ids" name="agent" id="agent_ids">
@@ -111,7 +143,7 @@
                     <h5 class="modal-title" id="agentModalLabel">Add/Edit Agent</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body">
+                <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
                     @if ($errors->any())
                         <div class="alert alert-danger">
                             <ul>
@@ -128,23 +160,20 @@
 
                         <div class="row">
                             <!-- Name -->
-                            <div class="col-md-6 mb-3">
+                            <div class="col-md-4 mb-3">
                                 <label for="name" class="form-label">Name</label>
                                 <input type="text" id="name" name="name" class="form-control"
                                     placeholder="Enter Name">
                             </div>
 
                             <!-- Email -->
-                            <div class="col-md-6 mb-3">
+                            <div class="col-md-4 mb-3">
                                 <label for="email" class="form-label">Email</label>
                                 <input type="email" id="email" name="email" class="form-control"
                                     placeholder="Enter Email">
                             </div>
-                        </div>
-
-                        <div class="row">
                             <!-- Destination Location -->
-                            <div class="col-md-6 mb-3">
+                            <div class="col-md-4 mb-3">
                                 <label for="destination_location" class="form-label">Destination Location</label>
                                 @if (isset($alllocations) && count($alllocations) > 0)
                                     <select id="destination_location" name="destination_location" class="form-select"
@@ -159,18 +188,18 @@
                                         class="form-control" placeholder="Enter Destination Location">
                                 @endif
                             </div>
+                        </div>
+
+                        <div class="row">
 
                             <!-- Destination Webhook -->
-                            <div class="col-md-6 mb-3">
+                            <div class="col-md-4 mb-3">
                                 <label for="destination_webhook" class="form-label">Destination Webhook</label>
                                 <input type="text" id="destination_webhook" name="destination_webhook"
                                     class="form-control" placeholder="Enter Destination Webhook">
                             </div>
-                        </div>
-
-                        <div class="row">
                             <!-- States -->
-                            <div class="col-md-6 mb-3">
+                            <div class="col-md-4 mb-3">
                                 <label for="states" class="form-label">States</label>
                                 <select id="states" name="states[]" class="form-select" multiple="multiple"
                                     style="width: 100%;">
@@ -179,22 +208,8 @@
                                     @endforeach
                                 </select>
                             </div>
-
-                            <!-- Carrier Type -->
-                            <div class="col-md-6 mb-3">
-                                <label for="carrier_type" class="form-label">Carrier Type</label>
-                                <select id="carrier_type" name="carrier_type[]" class="form-select" multiple="multiple"
-                                    style="width: 100%;">
-                                    @foreach (getCarrierType() as $type)
-                                        <option value="{{ $type }}">{{ $type }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="row">
                             <!-- Priority -->
-                            <div class="col-md-6 mb-3">
+                            <div class="col-md-4 mb-3">
                                 <label for="priority" class="form-label">Priority</label>
                                 <select class="form-select" id="priority" name="priority">
                                     <option selected disabled value="">Please Enter Priority...</option>
@@ -211,18 +226,22 @@
                                 </select>
 
                             </div>
+                        </div>
 
-                            <!-- Daily Limit -->
-                            <div class="col-md-6 mb-3">
-                                <label for="weightage" class="form-label">Weightage</label>
-                                <input type="number" id="weightage" name="weightage" class="form-control"
-                                    placeholder="Enter Weightage">
-
+                        <div class="row">
+                            <!-- Carrier Type -->
+                            <div class="col-md-12 mb-3">
+                                <label for="carrier_type" class="form-label">Carrier Type</label>
+                                <select id="carrier_type" name="carrier_type[]" class="form-select" multiple="multiple"
+                                    style="width: 100%;">
+                                    @foreach (getCarrierType() as $type)
+                                        <option value="{{ $type }}">{{ $type }}</option>
+                                    @endforeach
+                                </select>
                             </div>
+
                         </div>
                         <div class="row">
-
-
                             <div class="col-md-4 mb-3">
                                 <label for="daily_limit" class="form-label">Daily Limit</label>
                                 <input type="number" id="daily_limit" name="daily_limit" class="form-control"
@@ -243,14 +262,21 @@
                         </div>
 
                         <div class="row">
+                            <!-- Daily Limit -->
+                            <div class="col-md-4 mb-3">
+                                <label for="weightage" class="form-label">Weightage</label>
+                                <input type="number" id="weightage" name="weightage" class="form-control"
+                                    placeholder="Enter Weightage">
+
+                            </div>
                             <!-- npm number-->
-                            <div class="col-md-6 mb-3">
-                                <label for="npm_number" class="form-label">National Producer Number (NPN)</label>
+                            <div class="col-md-4 mb-3">
+                                <label for="npm_number" class="form-label"> NPN Number</label>
                                 <input type="text" id="npm_number" name="npm_number" class="form-control"
                                     placeholder="Enter National Producer Number">
                             </div>
                             <!-- cross_link  -->
-                            <div class="col-md-6 mb-3">
+                            <div class="col-md-4 mb-3">
                                 <label for="total_limit" class="form-label">Cross Link</label>
                                 <input type="text" id="cross_link" name="cross_link" class="form-control"
                                     placeholder="Enter Cross Link">
@@ -258,12 +284,15 @@
                         </div>
                         <div class="row">
                             <!-- Consent -->
-                            <div class="col-md-6 mb-3">
+                            <div class="col-md-12 mb-3">
                                 <label for="consent" class="form-label">Consent</label>
                                 <textarea id="consent" name="consent" class="form-control" rows="3" placeholder="Enter Consent Details"></textarea>
                             </div>
-                            <div class="col-md-6 mt-3">
-                                <div class="form-check mt-3">
+
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 ">
+                                <div class="form-check ">
                                     <label for="userRoleChecked" class="form-label"></label>
                                     <input class="form-check-input" type="checkbox" id="userRoleChecked"
                                         name="userRoleChecked">
@@ -351,16 +380,43 @@
 @endsection
 @include('admin.select2.select2');
 @section('scripts')
-@include('admin.select2.scriptload', ['load' => ['datatable']])
+    @include('admin.select2.scriptload', ['load' => ['datatable']])
     <script type="text/javascript">
-            $(document).ready(function() {
+        $(document).ready(function() {
             initializeSelect2();
             let $select = $('#carrier_type');
             $select.select2({
-                tags: true,
                 width: '100%',
                 allowClear: true,
+                placeholder: 'Select Carrier Type',
                 dropdownParent: $("#agentModal"),
+                ajax: {
+                    url: "{{ route('admin.getCarrierTypes') }}",
+                    dataType: 'json',
+                    delay: 100, // You can reduce this
+                    data: function(params) {
+                        return {
+                            q: params.term,
+                            page: params.page || 1
+                        };
+                    },
+                    beforeSend: function() {
+                        $('.loader').show();
+                    },
+                    processResults: function(data, params) {
+                        params.page = params.page || 1;
+                        return {
+                            results: data.results,
+                            pagination: {
+                                more: data.pagination.more
+                            }
+                        };
+                    },
+                    complete: function() {
+                        $('.loader').hide();
+                    },
+                    cache: true
+                }
             });
 
             function makeSortable() {
@@ -403,11 +459,19 @@
         });
         $(document).ready(function() {
             // Initialize Select2
-            $('#carrier_type, #states, #destination_location, #agentaccess').select2({
+            $('#states, #destination_location, #agentaccess').select2({
                 tags: true,
                 width: '100%',
                 dropdownParent: $("#agentModal"),
                 allowClear: true,
+            });
+            // Loader behavior
+            $('#carrier_type, #states, #destination_location, #agentaccess').on('select2:opening', function() {
+                $('.loader').show();
+            }).on('select2:open', function() {
+                setTimeout(() => {
+                    $('.loader').hide();
+                }, 300);
             });
             // Agent Access Hide or Show and clear values when unchecked
             $('#userRoleChecked').change(function() {
@@ -579,7 +643,7 @@
                 $('#monthly_limit').val(monthly_limit);
                 $('#total_limit').val(total_limit);
                 let formattedConsent = consent.replace(/\\r\\n/g, '\n').replace(/\\n/g, '\n').replace(/"/g,
-                ' ');
+                    ' ');
                 console.log(formattedConsent);
                 $('#consent').val(formattedConsent);
                 // Populate the consent field

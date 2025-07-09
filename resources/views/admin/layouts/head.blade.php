@@ -39,6 +39,19 @@
  <link rel="stylesheet" href="{{ asset('dist/css/dropify.min.css') }}">
 
  <style>
+     .select2-selection__rendered {
+         line-height: 35px !important;
+     }
+
+     .select2-container .select2-selection--single {
+         height: 37px !important;
+         width: 100% !important;
+     }
+
+     .select2-selection__arrow {
+         height: 37px !important;
+     }
+
      .horizontal>li>a {
          font-size: 16px !important;
          color: #fff;
