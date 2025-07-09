@@ -64,7 +64,7 @@ class AgentController extends Controller
             // Search logic
             if (!empty($request->search['value'])) {
                 $search = $request->search['value'];
-        
+
                 $data->where(function ($q) use ($search) {
                     $q->where('name', 'LIKE', "%{$search}%")
                         ->orWhere('email', 'LIKE', "%{$search}%")
@@ -74,7 +74,7 @@ class AgentController extends Controller
                         });
                 });
             }
-        
+
             return Datatables::of($data->get()) // ✅ Ensure we fetch data
                 ->addIndexColumn()
                 ->addColumn('states', function ($row) {
@@ -86,28 +86,28 @@ class AgentController extends Controller
                 ->addColumn('action', function ($row) {
                     $emailExists = \App\Models\User::where('agent_id', $row->id)->exists();
                     // \Log::info(["User Email", $emailExists]);
-        
+
                     $user = \App\Models\User::where('agent_id', $row->id)->first();
                     $location_id = [];
                     $from_agents = 0;
-        
+
                     if ($user && $user->role == 2) {
                         $location_id = \App\Models\AgentUser::where('user_id', $user->id)->pluck('location_id')->toArray();
                         $from_agents = 1;
                     }
-        
+
                     // Escape values safely
                     $npm_number = addslashes($row->npm_number ?? '');
                     $cross_link = addslashes($row->cross_link ?? '');
                     $weightage  = addslashes($row->weightage ?? '');
-        
+
                     $consent = json_encode($row->consent, JSON_HEX_APOS | JSON_HEX_QUOT);
                     $carrierTypes = json_encode($row->carrierTypes->pluck('carrier_type')->toArray(), JSON_HEX_APOS | JSON_HEX_QUOT);
                     $states = json_encode($row->states->pluck('id')->toArray(), JSON_HEX_APOS | JSON_HEX_QUOT);
                     $locations = json_encode($location_id, JSON_HEX_APOS | JSON_HEX_QUOT);
-        
+
                     if (is_role() == 'superadmin' || is_role() == 'admin') {
-                        $btn = '<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#agentModal" 
+                        $btn = '<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#agentModal"
                             onclick="savaAgentData('
                             . $row->id . ', \''
                             . addslashes($row->name) . '\', \''
@@ -127,7 +127,7 @@ class AgentController extends Controller
                             . $cross_link . '\', '
                             . ($from_agents ? 'true' : 'false')
                             . ')">Edit</button>';
-        
+
                         $btn .= '<a href="javascript:void(0);" onclick="deleteAgent(' . $row->id . ')">
                                     <button type="button" class="btn btn-primary mx-2">Delete</button>
                                  </a>';
@@ -137,13 +137,13 @@ class AgentController extends Controller
                     } else {
                         $btn = 'Not Authorized';
                     }
-        
+
                     return $btn;
                 })
                 ->rawColumns(['action'])
                 ->make(true);
         }
-        
+
         $states       = State::all();
         $alllocations = CompanyLocation::get(); //where('user_id', auth()->user()->added_by)->
         return view('admin.agents.index', compact('states', 'alllocations'));
@@ -506,8 +506,7 @@ class AgentController extends Controller
         $data = null;
 
         if ($type === "agent" || $type === 'campaign') {
-            if (($campaignId == 'all' && $agentId == 'all') || ($campaignId == null && $agentId == null)) {
-
+            if ($campaignId == null && $agentId == 'all') {
                 return response()->json([
                     'success'  => true,
                     'message'  => "Get All data successfully.",
@@ -516,16 +515,15 @@ class AgentController extends Controller
                 ], 200);
                 return redirect()->route('admin.dashboard');
             }
-            if (! is_null($campaignId) && (is_null($agentId) || $agentId == 'all')) {
-                $agentId = CampaignAgent::where('campaign_id', $campaignId)->pluck('agent_id')->toArray();
+            if (! is_null($campaignId) && $campaignId !== 'all') {
+                // This block runs only if $campaignId is NOT null and NOT 'all'
 
+                $agentId = CampaignAgent::where('campaign_id', $campaignId)->pluck('agent_id')->toArray();
             } else {
                 $aid       = $agentId;
                 $agentId   = [];
                 $agentId[] = $aid;
             }
-            
-        
 
             $query = Agent::select(
                 'agents.id',
@@ -538,11 +536,11 @@ class AgentController extends Controller
                 DB::raw('(SELECT COUNT(*) FROM contacts WHERE contacts.agent_id = agents.id AND DATE(contacts.created_at) = CURRENT_DATE) as daily_contacts_count'),
                 DB::raw('(SELECT COUNT(*) FROM contacts WHERE contacts.agent_id = agents.id' . (
                     ! empty($startDate) && ! empty($endDate)
-                    ? ' AND contacts.created_at  BETWEEN "' . $startDate . '" AND "' . $endDate . '"'
+                    ? ' AND contacts.created_at BETWEEN "' . $startDate . '" AND "' . $endDate . '"'
                     : ''
                 ) . ') as total_contacts_count')
             )
-                ->leftJoin('contacts', 'agents.id', '=', 'contacts.agent_id')
+                ->whereIn('agents.id', $agentId)
                 ->groupBy(
                     'agents.id',
                     'agents.priority',
@@ -551,10 +549,13 @@ class AgentController extends Controller
                     'agents.total_limit',
                     'agents.name'
                 )
-                ->whereIn("agents.id", $agentId);
-            if (! empty($startDate) && ! empty($endDate)) {
-                $query->whereBetween('agents.created_at', [$startDate, $endDate]);
-            }
+                ->orderBy('agents.priority', 'asc')
+                ->orderByRaw('(agents.monthly_limit - monthly_contacts_count) desc')
+                ->orderByRaw('(agents.daily_limit - daily_contacts_count) desc')
+                ->orderByRaw('(agents.total_limit - total_contacts_count) desc');
+
+            $data = $query->get();
+
             $data = $query
                 ->orderBy('agents.priority', 'asc')
                 ->orderByRaw('(agents.monthly_limit - monthly_contacts_count) desc')
@@ -562,7 +563,7 @@ class AgentController extends Controller
                 ->orderByRaw('(agents.total_limit - total_contacts_count) desc')
                 ->get();
         }
-      
+
         return response()->json([
             'success' => true,
             'message' => "$type data fetched successfully.",
