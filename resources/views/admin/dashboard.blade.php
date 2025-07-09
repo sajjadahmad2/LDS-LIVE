@@ -1,6 +1,5 @@
 @extends('admin.layouts.index')
 @section('content')
-@if( is_role() == 'admin')
     <div class="row row-cols-md-2 row-cols-xl-4">
         <div class="col-md-4">
             <div class="card">
@@ -23,7 +22,6 @@
             <div class="card">
                 <div class="card-body">
                     <label for="campaignSelect" class="form-label">Campaign</label>
-
                     @if (isset($campaigns) && $campaigns->count() > 0)
                         <select class="form-select" id="campaignSelect" data-type="campaign" onchange="fetchData(this)">
                             <option value="all">Please Select Campaign</option>
@@ -82,7 +80,6 @@
             </div>
         </div>
     </div>
-    @endif
     <a href="javascript:;" class="back-to-top"><i class='bx bxs-up-arrow-alt'></i></a>
 @endsection
 
@@ -100,7 +97,7 @@
             let agentId = $('#agentSelect').val();
             let campaignId = $('#campaignSelect').val();
 
-            let url = '/admin/compaign/agent';
+            let url = '/admin/dashboard';
             // Clear the other dropdown if one of them is selected
             if (type === 'agent' && agentId) {
                 document.getElementById('campaignSelect').value = 'all';
