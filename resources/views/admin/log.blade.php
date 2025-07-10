@@ -23,6 +23,7 @@
                             <th>Email</th>
                             <th>State</th>
                             <th>Reason</th>
+                            <th>Contact Source</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
@@ -53,6 +54,7 @@ $(function() {
             { data: 'email', name: 'email' },
             { data: 'state', name: 'state' },
             { data: 'reason', name: 'reason' },
+            {data:'contact_source',name:'contact_source'},
 
         ]
     });

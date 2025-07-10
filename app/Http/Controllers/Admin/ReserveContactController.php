@@ -1,31 +1,31 @@
 <?php
-
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use App\Models\ReserveContact;
 use App\Models\Agent;
-use Yajra\DataTables\Facades\DataTables;
-use Carbon\Carbon;
-use App\Models\Contact;
-use DB;
 use App\Models\Campaign;
-use App\Services\ProccessContactServices;
+use App\Models\Contact;
 use App\Models\Log;
+use App\Models\ReserveContact;
+use App\Services\ProccessContactServices;
+use Carbon\Carbon;
+use DB;
+use Illuminate\Http\Request;
+use Yajra\DataTables\Facades\DataTables;
+
 class ReserveContactController extends Controller
 {
     public function index(Request $request)
     {
         if ($request->ajax()) {
             try {
-                $data = ReserveContact::with('campaign:id,campaign_name')->select('id', 'phone', 'email', 'created_at', 'first_name','contact_id', 'state', 'campaign_id')
+                $data = ReserveContact::with('campaign:id,campaign_name')->select('id', 'phone', 'email', 'created_at', 'first_name', 'contact_id', 'state', 'campaign_id')
                     ->where('status', 'Not Sent')
                     ->orderBy('id', 'desc');
                 return DataTables::of($data)
                     ->addIndexColumn()
                     ->editColumn('campaign_id', function ($row) {
-                        return $row->campaign ? $row->campaign->campaign_name : ''; ;
+                        return $row->campaign ? $row->campaign->campaign_name : '';;
                     })
                     ->addColumn('action', function ($row) {
                         $btn = '<div class="row row-cols-auto g-3">';
@@ -41,21 +41,29 @@ class ReserveContactController extends Controller
                     ->make(true);
             } catch (\Exception $e) {
                 return response()->json([
-                    'error' => 'Something went wrong: ' . $e->getMessage()
+                    'error' => 'Something went wrong: ' . $e->getMessage(),
                 ], 500);
             }
         }
 
         return view('admin.reserve.index');
     }
-    public function log(Request $request) {
+    public function log(Request $request)
+    {
         if ($request->ajax()) {
             try {
-                $data = Log::select(['id', 'contact_id', 'name', 'email', 'state', 'reason', 'message'])->orderBy('id', 'desc');
-                return DataTables::of($data)->make(true);
+                $data = Log::select(['id', 'contact_id', 'name', 'email', 'state', 'reason', 'message'])
+                    ->orderBy('id', 'desc');
+
+                return DataTables::of($data)
+                    ->addColumn('contact_source', function ($row) {
+                        $decodedMessage = json_decode($row->message, true);
+                        return $decodedMessage['contact_source'] ?? 'N/A';
+                    })
+                    ->make(true);
             } catch (\Exception $e) {
                 return response()->json([
-                    'error' => 'Something went wrong: ' . $e->getMessage()
+                    'error' => 'Something went wrong: ' . $e->getMessage(),
                 ], 500);
             }
         }
@@ -63,24 +71,25 @@ class ReserveContactController extends Controller
         return view('admin.log');
     }
 
-    public function fetchState($state=null){
+    public function fetchState($state = null)
+    {
         //dd($state);
         $agents = Agent::whereHas('states', function ($query) use ($state) {
             $query->where(DB::raw('TRIM(LOWER(state))'), strtolower(trim($state)))
                 ->orWhere(DB::raw('TRIM(LOWER(short_form))'), strtolower(trim($state)));
         })->pluck('name', 'id'); // Fetch only `id` and `name`
-       //dd($agents);
+                                 //dd($agents);
         return response()->json($agents);
     }
 
     public function assignAgent(Request $request)
     {
         $agentId = $request->agent_id;
-        $leadId = $request->lead_id;
+        $leadId  = $request->lead_id;
 
         // Fetch the agent
         $agent = Agent::where('id', $agentId)->first();
-        if (!$agent) {
+        if (! $agent) {
             return response()->json(['message' => 'Agent not found!'], 404);
         }
 
@@ -90,7 +99,7 @@ class ReserveContactController extends Controller
         })->first();
 
         // Get current date and month in America/Chicago timezone
-        $currentDate = Carbon::now('America/Chicago')->format('Y-m-d');
+        $currentDate  = Carbon::now('America/Chicago')->format('Y-m-d');
         $currentMonth = Carbon::now('America/Chicago')->month;
 
         // Count agent's assigned contacts
@@ -119,7 +128,7 @@ class ReserveContactController extends Controller
 
         // Fetch and decode contact data
         $reserveContact = ReserveContact::select('contact_json')->find($leadId);
-        if (!$reserveContact) {
+        if (! $reserveContact) {
             return response()->json(['message' => 'Lead not found!'], 404);
         }
 
