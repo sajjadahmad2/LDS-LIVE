@@ -19,7 +19,7 @@ class ContactController extends Controller
         if ($request->ajax()) {
             try {
                 $query = Contact::query()
-                    ->select('contacts.*')
+                    ->select(['id', 'first_name', 'last_name', 'email', 'phone', 'city', 'postal_code', 'state', 'full_address', 'created_at', 'agent_id', 'campaign_id'])
                     ->with([
                         'agent:id,name',
                         'campaign:id,campaign_name',
