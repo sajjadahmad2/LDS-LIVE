@@ -17,6 +17,8 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ContactController;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -36,7 +38,24 @@ Route::get('/cache', function () {
 
     return '<h3>Caches have been cleared successfully!</h3>';
 });
+Route::get('/clear-logs', function () {
+  $cutoff = Carbon::now()->subMonth();
 
+        // Delete from process_contacts
+        $pcDeleted = DB::table('proccess_contacts')
+            ->where('created_at', '<', $cutoff)
+            ->delete();
+
+        // Delete from savejob_logs
+        $slDeleted = DB::table('savejob_logs')
+            ->where('created_at', '<', $cutoff)
+            ->delete();
+        // Delete from savejob_logs
+        $slDeleted = DB::table('logs')
+            ->where('created_at', '<', $cutoff)
+            ->delete();
+        return response()->json(['success' => 'Logs cleared successfully!']);
+});
 Route::get('/download-sql', function () {
        set_time_limit(0);
     $filePath = '/var/www/html/xl_lead_distribution.sql'; // Replace with your actual filename
