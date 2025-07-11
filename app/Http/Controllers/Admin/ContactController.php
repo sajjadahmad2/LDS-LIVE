@@ -3,11 +3,9 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Agent;
-use App\Models\State;
-use App\Models\AgentState;
 use App\Models\Campaign;
-use App\Models\CampaignAgent;
 use App\Models\Contact;
+use App\Models\State;
 use carbon\Carbon;
 use Illuminate\Http\Request;
 use Yajra\DataTables\Facades\DataTables;
@@ -20,78 +18,66 @@ class ContactController extends Controller
 
         if ($request->ajax()) {
             try {
-                $data = Contact::with([
-                    'agent:id,name',
-                    'campaign:id,campaign_name',
-                ])
-
+                $query = Contact::query()
+                    ->select('contacts.*')
+                    ->with([
+                        'agent:id,name',
+                        'campaign:id,campaign_name',
+                    ])
                     ->where('status', 'Sent')
-                    ->orderBy('id', 'desc');
-                if ($request->has('agent_ids') && $request->agent_ids !== 'all' && $request->agent_ids != '') {
-                    $data->where('agent_id', $request->agent_ids);
-                }
-                if ($request->has('state_ids') && $request->state_ids !== 'all' && $request->state_ids != '') {
-                    $agentState = State::where('id', $request->state_ids)->pluck('state')->toArray();
+                    ->orderByDesc('id');
 
-                    $data->whereIn('state', $agentState);
+                // ✅ Filter: Agent
+                if ($request->filled('agent_ids') && $request->agent_ids !== 'all') {
+                    $query->where('agent_id', $request->agent_ids);
                 }
-                if ($request->has('campaign_ids') && $request->campaign_ids !== 'all' && $request->campaign_ids != '') {
-                    $agentCampaign = Campaign::where('id', $request->campaign_ids)->pluck('id')->toArray();
-                    \Log::info(["agentCampaign ids", $agentCampaign]);
-                    $data->whereIn('campaign_id', $agentCampaign);
-                }
-                \Log::info(["Adent ID" => $request->agent_ids]);
-                if ($request->has('customDateRange') && $request->customDateRange !== 'all' && $request->customDateRange != '') {
-                    \Log::info('Custom Date Range: ' . $request->customDateRange);
 
+                // ✅ Filter: State
+                if ($request->filled('state_ids') && $request->state_ids !== 'all') {
+                    $states = State::where('id', $request->state_ids)->pluck('state');
+                    $query->whereIn('state', $states);
+                }
+
+                // ✅ Filter: Campaign
+                if ($request->filled('campaign_ids') && $request->campaign_ids !== 'all') {
+                    $query->whereIn('campaign_id', [$request->campaign_ids]);
+                }
+
+                // ✅ Filter: Date Range
+                if ($request->filled('customDateRange') && $request->customDateRange !== 'all') {
                     $dates = explode(' to ', $request->customDateRange);
-
-                    if (count($dates) == 2) {
-                        $startDate = Carbon::createFromFormat('Y-m-d', trim($dates[0]), 'America/Chicago')->startOfDay();
-                        $endDate   = Carbon::createFromFormat('Y-m-d', trim($dates[1]), 'America/Chicago')->endOfDay();
-
-                        \Log::info(["Start Date" => $startDate, "End Date" => $endDate]);
-
-                        // No formatting here — use Carbon objects directly
-                        $data->whereBetween('created_at', [$startDate, $endDate]);
+                    if (count($dates) === 2) {
+                        $start = Carbon::createFromFormat('Y-m-d', trim($dates[0]), 'America/Chicago')->startOfDay();
+                        $end   = Carbon::createFromFormat('Y-m-d', trim($dates[1]), 'America/Chicago')->endOfDay();
+                        $query->whereBetween('created_at', [$start, $end]);
                     }
                 }
 
-                return DataTables::of($data)
+                return DataTables::of($query)
                     ->addIndexColumn()
-                    ->editColumn('agent_id', function ($row) {
-                        return $row->agent ? $row->agent->name : '';
-                    })
-                    ->editColumn('campaign_id', function ($row) {
-                        return $row->campaign ? $row->campaign->campaign_name : '';
-                    })
-                    ->editColumn('first_name', function ($row) {
-                        return $row->first_name . ' ' . $row->last_name;
-                    })
+                    ->editColumn('agent_id', fn($row) => $row->agent->name ?? '')
+                    ->editColumn('campaign_id', fn($row) => $row->campaign->campaign_name ?? '')
+                    ->editColumn('first_name', fn($row) => $row->first_name . ' ' . $row->last_name)
                     ->filter(function ($query) use ($request) {
-                        if (! empty($request->search['value'])) {
-                            $searchValue = $request->search['value'];
-                            $query->where(function ($q) use ($searchValue) {
-                                $q->where('id', 'LIKE', "%{$searchValue}%")
-                                    ->orWhere('first_name', 'LIKE', "%{$searchValue}%")
-                                    ->orWhere('last_name', 'LIKE', "%{$searchValue}%")
-                                    ->orWhere('contact_id', 'LIKE', "%{$searchValue}%")
-                                    ->orWhere('email', 'LIKE', "%{$searchValue}%")
-                                    ->orWhere('phone', 'LIKE', "%{$searchValue}%")
-                                    ->orWhere('state', 'LIKE', "%{$searchValue}%")
-                                    ->orWhereHas('agent', function ($subQuery) use ($searchValue) {
-                                        $subQuery->where('name', 'LIKE', "%{$searchValue}%");
-                                    })->orWhereHas('campaign', function ($subQuery) use ($searchValue) {
-                                    $subQuery->where('campaign_name', 'LIKE', "%{$searchValue}%");
-                                });
+                        $search = $request->search['value'] ?? '';
+                        if (! empty($search)) {
+                            $query->where(function ($q) use ($search) {
+                                $q->where('contacts.id', 'LIKE', "%{$search}%")
+                                    ->orWhere('contacts.first_name', 'LIKE', "%{$search}%")
+                                    ->orWhere('contacts.last_name', 'LIKE', "%{$search}%")
+                                    ->orWhere('contacts.contact_id', 'LIKE', "%{$search}%")
+                                    ->orWhere('contacts.email', 'LIKE', "%{$search}%")
+                                    ->orWhere('contacts.phone', 'LIKE', "%{$search}%")
+                                    ->orWhere('contacts.state', 'LIKE', "%{$search}%")
+                                    ->orWhereHas('agent', fn($q2) => $q2->where('name', 'LIKE', "%{$search}%"))
+                                    ->orWhereHas('campaign', fn($q3) => $q3->where('campaign_name', 'LIKE', "%{$search}%"));
                             });
                         }
                     })
                     ->make(true);
+
             } catch (\Exception $e) {
-                return response()->json([
-                    'error' => 'Something went wrong: ' . $e->getMessage(),
-                ], 500);
+                return response()->json(['error' => 'Something went wrong: ' . $e->getMessage()], 500);
             }
         }
 
