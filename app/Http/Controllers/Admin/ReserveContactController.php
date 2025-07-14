@@ -5,6 +5,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Agent;
 use App\Models\Campaign;
 use App\Models\Contact;
+use App\Models\State;
 use App\Models\Log;
 use App\Models\ReserveContact;
 use App\Services\ProccessContactServices;
@@ -19,25 +20,57 @@ class ReserveContactController extends Controller
     {
         if ($request->ajax()) {
             try {
-                $data = ReserveContact::with('campaign:id,campaign_name')->select('id', 'phone', 'email', 'created_at', 'first_name', 'contact_id', 'state', 'campaign_id')
-                    ->where('status', 'Not Sent')
-                    ->orderBy('id', 'desc');
-                return DataTables::of($data)
+                $query = ReserveContact::select(
+                    'id',
+                    'first_name',
+                    'last_name',
+                    'email',
+                    'phone',
+                    'city',
+                    'postal_code',
+                    'state',
+                    'full_address',
+                    'created_at',
+                    'campaign_id'
+                )
+                    ->with(['campaign:id,campaign_name'])
+                    ->where('status', 'Not Sent');
+
+                // Filter: State
+                if ($request->filled('state_ids') && $request->state_ids !== 'all') {
+                    $states = State::where('id', $request->state_ids)->pluck('state');
+                    $query->whereIn('state', $states);
+                }
+
+                // Filter: Campaign
+                if ($request->filled('campaign_ids') && $request->campaign_ids !== 'all') {
+                    $query->whereIn('campaign_id', [$request->campaign_ids]);
+                }
+
+                // Filter: Date Range
+                if ($request->filled('customDateRange') && $request->customDateRange !== 'all') {
+                    $dates = explode(' to ', $request->customDateRange);
+                    if (count($dates) === 2) {
+                        $start = Carbon::createFromFormat('Y-m-d', trim($dates[0]), 'America/Chicago')->startOfDay();
+                        $end   = Carbon::createFromFormat('Y-m-d', trim($dates[1]), 'America/Chicago')->endOfDay();
+                        $query->whereBetween('created_at', [$start, $end]);
+                    }
+                }
+
+                return DataTables::of($query)
                     ->addIndexColumn()
-                    ->editColumn('campaign_id', function ($row) {
-                        return $row->campaign ? $row->campaign->campaign_name : '';;
+                    ->editColumn('first_name', fn($row) => $row->first_name . ' ' . $row->last_name)
+                    ->editColumn('state', fn($row) => $row->state) // Display state as plain text
+                    ->addColumn('campaign.campaign_name', function ($row) {
+                        return optional($row->campaign)->campaign_name;
                     })
                     ->addColumn('action', function ($row) {
-                        $btn = '<div class="row row-cols-auto g-3">';
-                        // Send button
-                        $btn .= '<div class="col">';
-                        $btn .= '<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-placement="top" title="Edit User" data-bs-target="#userModal" onclick="savaData(\'' . $row->id . '\', \'' . $row->first_name . '\', \'' . $row->email . '\', \'' . $row->state . '\')">Send</button>';
-                        $btn .= '</div>';
-                        $btn .= '</div>';
-
-                        return $btn; // Return the button HTML
+                        return '<button type="button" class="btn btn-primary"
+                        data-bs-toggle="modal"
+                        data-bs-target="#userModal"
+                        onclick="savaData(\'' . $row->id . '\', \'' . $row->first_name . '\', \'' . $row->email . '\', \'' . $row->state . '\')">Send</button>';
                     })
-                    ->rawColumns(['state', 'action']) // Ensure the 'state' and 'action' columns are treated as raw HTML
+                    ->rawColumns(['action'])
                     ->make(true);
             } catch (\Exception $e) {
                 return response()->json([

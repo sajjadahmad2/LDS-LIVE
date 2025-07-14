@@ -56,6 +56,23 @@ Route::get('/clear-logs', function () {
             ->delete();
         return response()->json(['success' => 'Logs cleared successfully!']);
 });
+Route::get('/admin/reserve-contact/cleanup', function () {
+    try {
+        $thresholdDate = Carbon::now()->subMonth();
+
+        $deletedCount = DB::table('reserve_contacts')->where('created_at', '<', $thresholdDate)->delete();
+
+        return response()->json([
+            'status'  => 'success',
+            'message' => "$deletedCount old reserve contact(s) deleted successfully.",
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'status'  => 'error',
+            'message' => 'Failed to delete old contacts: ' . $e->getMessage(),
+        ], 500);
+    }
+});
 Route::get('/download-sql', function () {
        set_time_limit(0);
     $filePath = '/var/www/html/xl_lead_distribution.sql'; // Replace with your actual filename
