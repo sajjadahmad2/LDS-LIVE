@@ -107,10 +107,10 @@ public function getAgentConsent(Request $request)
     protected function handleContactCreateType($data, $dataKeys, $requiredFields, $contactId, $state, $request, $campaignId)
     {
         if (count($dataKeys) === count($requiredFields) && empty(array_diff($dataKeys, $requiredFields))) {
-            \Log::info('Contact from Survey Script', [
-                'email' => $data['email'],
-                'state' => $data['state'],
-            ]);
+            // \Log::info('Contact from Survey Script', [
+            //     'email' => $data['email'],
+            //     'state' => $data['state'],
+            // ]);
 
             appendJobLog($contactId, 'ContactCreate from Survey Script');
 
@@ -118,14 +118,14 @@ public function getAgentConsent(Request $request)
             return response()->json(['message' => 'Webhook received with exact fields'], 202);
         }
 
-        \Log::info('Contact from App', ['contact_id' => $contactId, 'state' => $state]);
+        // \Log::info('Contact from App', ['contact_id' => $contactId, 'state' => $state]);
         appendJobLog($contactId, 'ContactCreate from App');
         return response()->json(['message' => 'Webhook received'], 202);
     }
 
     protected function handleCustomContactCreateType($contactId, $state, $request, $campaignId)
     {
-        \Log::info('Contact creation from Automation', ['contact_id' => $contactId, 'state' => $state]);
+        // \Log::info('Contact creation from Automation', ['contact_id' => $contactId, 'state' => $state]);
         appendJobLog($contactId, 'Custom ContactCreate from Automation');
 
         $this->contactWebhook($request, $campaignId);
@@ -134,7 +134,7 @@ public function getAgentConsent(Request $request)
 
     protected function handleSurveySubmission($contactId, $state, $data, $campaignId)
     {
-        \Log::info('Survey Submission from Automation', ['contact_id' => $contactId, 'state' => $state]);
+        // \Log::info('Survey Submission from Automation', ['contact_id' => $contactId, 'state' => $state]);
 
         Logs::updateOrCreate(
             ['contact_id' => $contactId],

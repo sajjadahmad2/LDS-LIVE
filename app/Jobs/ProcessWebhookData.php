@@ -48,13 +48,14 @@ class ProcessWebhookData implements ShouldQueue
         $agentIds     = CampaignAgent::where('campaign_id', $campaign_id)->pluck('agent_id')->toArray();
         if (count($agentIds) === 0 || empty($mainCampaign) || (! isset($webhookdata['state']) && (! isset($webhookdata['contact_id']) || is_null($contact_id)))) {
             if (! is_null($contact_id)) {
-                Log::info(match (true) {
-                    count($agentIds) === 0        => 'No Agent Found or Limit Reached, Sent to Reserve',
-                    empty($mainCampaign)          => 'Campaign Not Provided, Sent to Reserve',
-                    ! isset($webhookdata['state']) => 'State Not Provided, Sent to Reserve',
-                });
+                // Log::info(match (true) {
+                //     count($agentIds) === 0        => 'No Agent Found or Limit Reached, Sent to Reserve',
+                //     empty($mainCampaign)          => 'Campaign Not Provided, Sent to Reserve',
+                //     ! isset($webhookdata['state']) => 'State Not Provided, Sent to Reserve',
+                // });
                 appendJobLog($contact_id, 'Contact send to the Reserve due to Campaign or stae is not provided');
-                $this->ReserveContact($webhookdata, null, $mainCampaign);
+               $this->ReserveContact($webhookdata, null, $mainCampaign,'Contact send to the Reserve due to
+                Campaign or state is not provided');
             }
             return match (true) {
                 count($agentIds) === 0 => null,
@@ -74,7 +75,7 @@ class ProcessWebhookData implements ShouldQueue
             // }
 
         }
-        \Log::info(["Contact Origniated From That Source having id" => $sourceUser->id ?? null]);
+        // \Log::info(["Contact Origniated From That Source having id" => $sourceUser->id ?? null]);
         $sourceUserId = $sourceUser->id;
         $currentMonth = Carbon::now('America/Chicago')->month;
         $currentDate  = Carbon::now('America/Chicago')->format('Y-m-d');
@@ -82,7 +83,7 @@ class ProcessWebhookData implements ShouldQueue
         $email = $webhookdata['email'] ?? null;
 
         $searchContactByEmail = Contact::where(function ($query) use ($email, $contact_id) {
-            if ($email) { 
+            if ($email) {
                 $query->where('email', $email)
                       ->orWhere('contact_id', $contact_id);
             } else {
@@ -94,11 +95,12 @@ class ProcessWebhookData implements ShouldQueue
         if($searchContactByEmail){
             \Log::info("Contact Duplication Alert Please check the email : {$email}");
             appendJobLog($contact_id, 'Contact sent to reserve it already exist in the contact table and sent to the agent id : '.$searchContactByEmail->agent_id ?? null);
-            $this->ReserveContact($webhookdata, null, $mainCampaign);
+            $this->ReserveContact($webhookdata, null, $mainCampaign,'Contact sent to reserve it already exist in the
+            contact table and sent to the agent id : '.$searchContactByEmail->agent_id ?? null);
             return;
         }
         $proccessContact = ProccessContact::where(function ($query) use ($email, $contact_id) {
-                if ($email) { 
+                if ($email) {
                     $query->where('email', $email)
                           ->orWhere('contact_id', $contact_id);
                 } else {
@@ -107,10 +109,10 @@ class ProcessWebhookData implements ShouldQueue
             })
             ->whereNotNull('agent_id')
             ->first();
-        
-    
+
+
         if (!$proccessContact) {
-            \Log::info('No Contact Found, Find the Best Agent again for contact id  ' . $contact_id);
+            // \Log::info('No Contact Found, Find the Best Agent again for contact id  ' . $contact_id);
             appendJobLog($contact_id, 'No Contact Found in Process table, Find the Best Agent again for contact id  ' . $contact_id);
             //Agents Where state and the campaighn matches
             $agents = Agent::whereHas('states', function ($query) use ($state) {
@@ -135,9 +137,10 @@ class ProcessWebhookData implements ShouldQueue
 
             if ($agents->isEmpty()) {
                 if (! is_null($contact_id)) {
-                    Log::info('No Agent Found or Limit Reached, Sent to Reserve');
+                    // Log::info('No Agent Found or Limit Reached, Sent to Reserve');
                     appendJobLog($contact_id, 'No Agent Found or Limit Reached, Sent to Reserve ' . $contact_id);
-                    $this->ReserveContact($webhookdata, null, $mainCampaign);
+                    $this->ReserveContact($webhookdata, null, $mainCampaign,'No Agent Found or Limit Reached, Sent to Reserve ');
+
                 }
                 return;
             }
@@ -147,8 +150,8 @@ class ProcessWebhookData implements ShouldQueue
             $agentIdss = $groupedAgents->map(function ($group) {
                 return $group->pluck('id')->toArray();
             });
-            
-            \Log::info('State Agents After Submission of Contact ID'.$contact_id.': ' . json_encode($agentIdss));
+
+            // \Log::info('State Agents After Submission of Contact ID'.$contact_id.': ' . json_encode($agentIdss));
             $dailyLimitReached = false;
 
             foreach ($groupedAgents as $priority => $priorityAgents) {
@@ -163,7 +166,7 @@ class ProcessWebhookData implements ShouldQueue
                     if ($total && $monthly && $daily) {
                         if ($agent->agent_count_weightage < $agent->weightage) {
                             // Assign lead and increment weightage
-                            Log::info('Agent found. Contact dispatched. Agent ID: ' . ($agent->name ?? ''));
+                            // Log::info('Agent found. Contact dispatched. Agent ID: ' . ($agent->name ?? ''));
                             appendJobLog($contact_id, 'Contact dispatched. Agent ID: ' . ($agent->name ?? ''));
                             $this->ProccessContact($webhookdata, $agent, $mainCampaign);
                             $agent->increment('agent_count_weightage', 1);
@@ -193,7 +196,7 @@ class ProcessWebhookData implements ShouldQueue
                         $daily   = $agent->daily_contacts_count < $agent->daily_limit;
 
                         if ($total && $monthly && $daily) {
-                            Log::info('Weightage reset. Assigning contact to agent ID: ' . ($agent->name ?? ''));
+                            // Log::info('Weightage reset. Assigning contact to agent ID: ' . ($agent->name ?? ''));
                             appendJobLog($contact_id, 'Weightage reset. Assigning contact to agent ID: ' . ($agent->name ?? ''));
                             $this->ProccessContact($webhookdata, $agent, $mainCampaign);
                             $agent->increment('agent_count_weightage', 1);
@@ -204,14 +207,15 @@ class ProcessWebhookData implements ShouldQueue
             }
 
             // If all agents in all priority levels are full, send to reserve
-            Log::info('All Agents weightage is full and limits reached. Sending to reserve.');
+            // Log::info('All Agents weightage is full and limits reached. Sending to reserve.');
             appendJobLog($contact_id, 'All Agents weightage is full and limits reached. Sending to reserve ' . $contact_id);
-            $this->ReserveContact($webhookdata, null, $mainCampaign);
+            $this->ReserveContact($webhookdata, null, $mainCampaign,'All Agents weightage is full and limits reached. Sending to reserve');
+
 
         } else {
             // Process contact and assign it to the agent
             $selectedAgent = Agent::where('id', $proccessContact->agent_id)->first();
-            \Log::info('Agent found Contact is dispatched to the process JOB Agent ID: ' . $selectedAgent->name ?? '');
+            // \Log::info('Agent found Contact is dispatched to the process JOB Agent ID: ' . $selectedAgent->name ?? '');
             appendJobLog($contact_id, 'Contact dispatched to the process JOB Agent ID: ' . $selectedAgent->name ?? '');
             $this->ProccessContact($webhookdata, $selectedAgent, $mainCampaign);
         }
@@ -235,7 +239,7 @@ class ProcessWebhookData implements ShouldQueue
                 $proccessContact->$key = $value;
             }
             $proccessContact->save();
-            \Log::info("Updated  old Contact in Process Contact Table with contact ID: {$contact_id} and state is : {$proccessContact->state} With status NOT SENT");
+            // \Log::info("Updated  old Contact in Process Contact Table with contact ID: {$contact_id} and state is : {$proccessContact->state} With status NOT SENT");
             appendJobLog($contact_id, "Updated  old Contact in Process Contact Table with contact ID: {$contact_id} and state is : {$proccessContact->state} With status NOT SENT");
             $this->ContactProcess($proccessContact, $agent, $campaign);
         } else {
@@ -244,7 +248,7 @@ class ProcessWebhookData implements ShouldQueue
                 $proccessContact->$key = $value;
             }
             $proccessContact->save();
-            \Log::info("Created new Contact in Process Contact Table with contact ID: {$contact_id} and state is : {$proccessContact->state} With status NOT SENT");
+            // \Log::info("Created new Contact in Process Contact Table with contact ID: {$contact_id} and state is : {$proccessContact->state} With status NOT SENT");
             appendJobLog($contact_id, "Created new Contact in Process Contact Table with contact ID: {$contact_id} and state is : {$proccessContact->state} With status NOT SENT");
             $this->ContactProcess($proccessContact, $agent, $campaign);
 
@@ -285,7 +289,7 @@ class ProcessWebhookData implements ShouldQueue
                 $contact->$key = $value;
             }
             $contact->save();
-            \Log::info("Updated old in contact table with contact ID: {$contact_id} and state is : {$contact->state} With status NOT SENT ");
+            // \Log::info("Updated old in contact table with contact ID: {$contact_id} and state is : {$contact->state} With status NOT SENT ");
             appendJobLog($contact_id, "Updated old in contact table with contact ID: {$contact_id} and state is : {$contact->state} With status NOT SENT ");
 
         } else {
@@ -294,9 +298,9 @@ class ProcessWebhookData implements ShouldQueue
                 $contact->$key = $value;
             }
             $contact->save();
-            \Log::info("Created new Contact in contact table  with contact ID: {$contact_id} and state is : {$contact->state} With status NOT SENT ");
+            // \Log::info("Created new Contact in contact table  with contact ID: {$contact_id} and state is : {$contact->state} With status NOT SENT ");
             appendJobLog($contact_id, "Created new Contact in contact table  with contact ID: {$contact_id} and state is : {$contact->state} With status NOT SENT ");
-            
+
             //$this->SendGhl($contact, $agent, $campaign);
 
         }
@@ -315,11 +319,11 @@ class ProcessWebhookData implements ShouldQueue
             })
             ->first();
         if ($findContact) {
-            \Log::info("Updated old in contact table with contact ID: {$contact_id} and state is : {$findContact->state} With status{$findContact->status} Forward to GHL");
+            // \Log::info("Updated old in contact table with contact ID: {$contact_id} and state is : {$findContact->state} With status{$findContact->status} Forward to GHL");
             appendJobLog($contact_id, "Updated old in contact table with contact ID: {$contact_id} and state is : {$findContact->state} With status{$findContact->status} Forward to GHL");
             $this->SendGhl($findContact, $agent, $campaign);
         } else {
-            \Log::info(" Contact in contact table  with contact ID: {$contact_id} With status  SENT not forward to GHL ");
+            // \Log::info(" Contact in contact table  with contact ID: {$contact_id} With status  SENT not forward to GHL ");
             appendJobLog($contact_id, " Contact in contact table  with contact ID: {$contact_id} With status  SENT and sent to that agent : {$findContact->agent_id} not forward to GHL ");
         }
     }
@@ -373,7 +377,7 @@ class ProcessWebhookData implements ShouldQueue
                 $contact   = Contact::where('id', $contactId)->first();
                 \Log::info('Contact Not submitted or Sent Due to this reason ' . json_encode($response));
                 \Log::info('This contact is delete  from the Contact and  process table sent to resever contact ' . $contactId);
-                appendJobLog($contact->contact_id,'Contact Not submitted or Sent Due to this reason ' . json_encode($response));   
+                appendJobLog($contact->contact_id,'Contact Not submitted or Sent Due to this reason ' . json_encode($response));
                 $message = json_decode(base64_decode($contact->contact_json), true);
                 Logs::updateOrCreate(
                     ['contact_id' => $contact->contact_id],
@@ -448,7 +452,7 @@ class ProcessWebhookData implements ShouldQueue
                 preg_replace('/\s+/', ' ', trim($key)) => preg_replace('/\s+/', ' ', trim($value))
             ];
         })->toArray();
-        
+
 
     $customFieldData = [];
 
@@ -489,7 +493,7 @@ class ProcessWebhookData implements ShouldQueue
             }
         } else {
             $noMatch[] = $key;
-          
+
         }
     }
     \Log::info("No match for custom field from the above data Checking below:", ['noMatch' => $noMatch]);
@@ -607,7 +611,7 @@ class ProcessWebhookData implements ShouldQueue
             return $ghl;
         }
     }
-    protected function ReserveContact($data, $agent = null, $campaign)
+    protected function ReserveContact($data, $agent = null, $campaign,$reason = null)
     {
         $type           = $data['customData'];
         $contact_id     = $data['contact_id'];
@@ -619,6 +623,7 @@ class ProcessWebhookData implements ShouldQueue
                 $reserveContact->$key = $value;
             }
             $reserveContact->status = 'Not Sent';
+            $reserveContact->reason = $reason;
             $reserveContact->save();
             \Log::info("Updated ReserveContact with contact ID: {$contact_id}");
         } else {
@@ -627,6 +632,7 @@ class ProcessWebhookData implements ShouldQueue
                 $reserveContact->$key = $value;
             }
             $reserveContact->status = 'Not Sent';
+            $reserveContact->reason = $reason;
             $reserveContact->save();
             \Log::info("Created new ReserveContact with contact ID: {$contact_id}");
         }
