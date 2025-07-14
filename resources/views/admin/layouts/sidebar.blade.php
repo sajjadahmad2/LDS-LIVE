@@ -55,13 +55,13 @@
                 <li>
                     <a href="{{ route('admin.sent.contact') }}">
                         <div class="parent-icon"><i class="fadeIn animated bx bx-send"></i></div>
-                        <div class="menu-title">Sent Contacts</div>
+                        <div class="menu-title">Reports</div>
                     </a>
                 </li>
                 <li>
                     <a href="{{ route('admin.reserve.contact') }}">
                         <div class="parent-icon"><i class="fadeIn animated bx bx-archive-in"></i></div>
-                        <div class="menu-title">Reserve Contacts</div>
+                        <div class="menu-title">Sitting Contacts</div>
                     </a>
                 </li>
                 <li>
