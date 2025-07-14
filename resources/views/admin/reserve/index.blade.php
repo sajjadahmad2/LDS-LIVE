@@ -146,28 +146,28 @@
                     [9, "desc"]
                 ], // created_at
                 pageLength: 10,
-                dom: 'Bfrtip', // <== Important for button layout
-                buttons: [{
-                        extend: 'csvHtml5',
-                        text: 'CSV', // CSV icon
-                        className: 'btn btn-sm btn-outline-success',
-                        titleAttr: 'Export to CSV',
-                        filename: 'Reserved_contacts_csv',
-                        exportOptions: {
-                            columns: [1, 2, 3, 4, 5, 6, 7, 8, 9] // Adjust columns as needed
-                        }
-                    },
-                    {
-                        extend: 'pdfHtml5',
-                        text: 'PDF', // PDF icon
-                        className: 'btn btn-sm btn-outline-danger',
-                        titleAttr: 'Export to PDF',
-                        filename: 'Reserved_contacts_pdf',
-                        exportOptions: {
-                            columns: [1, 2, 3, 4, 5, 6, 7, 8, 9]
-                        }
-                    }
-                ],
+                // dom: 'Bfrtip', // <== Important for button layout
+                // buttons: [{
+                //         extend: 'csvHtml5',
+                //         text: 'CSV', // CSV icon
+                //         className: 'btn btn-sm btn-outline-success',
+                //         titleAttr: 'Export to CSV',
+                //         filename: 'Reserved_contacts_csv',
+                //         exportOptions: {
+                //             columns: [1, 2, 3, 4, 5, 6, 7, 8, 9] // Adjust columns as needed
+                //         }
+                //     },
+                //     {
+                //         extend: 'pdfHtml5',
+                //         text: 'PDF', // PDF icon
+                //         className: 'btn btn-sm btn-outline-danger',
+                //         titleAttr: 'Export to PDF',
+                //         filename: 'Reserved_contacts_pdf',
+                //         exportOptions: {
+                //             columns: [1, 2, 3, 4, 5, 6, 7, 8, 9]
+                //         }
+                //     }
+                // ],
                 columns: [{
                         data: 'id',
                         name: 'id'
