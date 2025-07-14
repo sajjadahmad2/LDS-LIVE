@@ -68,7 +68,7 @@
                             <th>City</th>
                             <th>Zip</th>
                             <th>State</th>
-                            {{-- <th>Full Address</th> --}}
+                            <th>Reason</th>
                             <th>Campaign</th>
                             <th>Created At</th>
                             <th>Action</th>
