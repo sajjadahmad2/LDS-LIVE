@@ -29,7 +29,7 @@ class ReserveContactController extends Controller
                     'city',
                     'postal_code',
                     'state',
-                    'full_address',
+                    'reason',
                     'created_at',
                     'campaign_id'
                 )

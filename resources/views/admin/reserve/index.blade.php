@@ -177,10 +177,10 @@
                         name: 'state',
 
                     },
-                    // {
-                    //     data: 'full_address',
-                    //     name: 'full_address',
-                    // },
+                    {
+                        data: 'reason',
+                        name: 'reason',
+                    },
                     {
                         data: 'campaign.campaign_name',
                         name: 'campaign.campaign_name'
