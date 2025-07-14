@@ -68,7 +68,7 @@
                             <th>City</th>
                             <th>Zip</th>
                             <th>State</th>
-                            <th>Full Address</th>
+                            {{-- <th>Full Address</th> --}}
                             <th>Campaign</th>
                             <th>Created At</th>
                             <th>Action</th>
@@ -177,10 +177,10 @@
                         name: 'state',
 
                     },
-                    {
-                        data: 'full_address',
-                        name: 'full_address',
-                    },
+                    // {
+                    //     data: 'full_address',
+                    //     name: 'full_address',
+                    // },
                     {
                         data: 'campaign.campaign_name',
                         name: 'campaign.campaign_name'
