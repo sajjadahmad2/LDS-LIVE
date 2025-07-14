@@ -116,6 +116,24 @@
                     [8, "desc"]
                 ], // Sort by created_at in descending order
                 pageLength: 10, // Load in chunks of 10
+                dom: 'Bfrtip', // <== Important for button layout
+                buttons: [{
+                        extend: 'csvHtml5',
+                        text: 'CSV', // CSV icon
+                        className: 'btn btn-sm btn-outline-success',
+                        titleAttr: 'Export to CSV',
+                        filename: 'contacts_csv',
+
+                    },
+                    {
+                        extend: 'pdfHtml5',
+                        text: 'PDF', // PDF icon
+                        className: 'btn btn-sm btn-outline-danger',
+                        titleAttr: 'Export to PDF',
+                        filename: 'contacts_pdf',
+
+                    }
+                ],
                 columns: [{
                         data: 'id',
                         name: 'id'
