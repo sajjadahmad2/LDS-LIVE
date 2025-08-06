@@ -18,20 +18,20 @@ class DashboardController extends Controller
     {
         if (is_role() == 'admin') {
             $agents    = $this->getAgentsByUser(login_id());
-            $campaigns = $this->getCampaignsByUser(login_id());
+            // $campaigns = $this->getCampaignsByUser(login_id());
 
-            $data = $this->getAgentStatsQuery(login_id())->get();
+            // $data = $this->getAgentStatsQuery(login_id())->get();
 
         } elseif (is_role() == 'superadmin') {
             $agents    = Agent::all();
-            $campaigns = Campaign::all();
-            $data      = $this->getAgentStatsQuery(null)->get(); // Get all agents
+            // $campaigns = Campaign::all();
+            // $data      = $this->getAgentStatsQuery(null)->get(); // Get all agents
 
         } else {
             $locationIds = AgentUser::where('user_id', login_id())->pluck('location_id')->toArray();
             $agents      = Agent::whereIn('destination_location', $locationIds)->get();
-            $campaigns   = Campaign::with(['agents'])->whereIn('id', $agents->pluck('id'))->get();
-            $data        = $this->getAgentStatsQuery(login_id())->get();
+            // $campaigns   = Campaign::with(['agents'])->whereIn('id', $agents->pluck('id'))->get();
+            // $data        = $this->getAgentStatsQuery(login_id())->get();
         }
 
         return view('admin.dashboard', get_defined_vars());
