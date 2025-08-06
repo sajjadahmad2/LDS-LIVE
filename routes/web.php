@@ -117,6 +117,8 @@ Route::prefix('authorization')->name('crm.')->group(function () {
 Route::middleware('auth')->group(function () {
     Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+        Route::get('/dashboard/stats', [DashboardController::class, 'getDashboardStats'])->name('dashboard.stats');
+         Route::get('/detail/dashboard/stats', [DashboardController::class, 'detailDashboard'])->name('dashboard.details');
         Route::get('user', [UserController::class, 'index'])->name('user.index');
         Route::post('user/{id?}', [UserController::class, 'store'])->name('user.store');
         Route::get('user/edit/{id}', [UserController::class, 'edit'])->name('user.edit');

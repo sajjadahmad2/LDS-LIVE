@@ -19,6 +19,7 @@ class Contact extends Model
      * @param string $value
      * @return string
      */
+    protected $with = ['agent'];
      public function getCreatedAtAttribute($value)
      {
          return \Carbon\Carbon::parse($value)->timezone('America/Chicago')->format('Y-m-d H:i:s');

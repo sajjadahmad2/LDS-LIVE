@@ -54,7 +54,7 @@ class ProcessWebhookData implements ShouldQueue
                 //     ! isset($webhookdata['state']) => 'State Not Provided, Sent to Reserve',
                 // });
                 appendJobLog($contact_id, 'Contact send to the Reserve due to Campaign or stae is not provided');
-               $this->ReserveContact($webhookdata, null, $mainCampaign,'Contact send to the Reserve due to Campaign or state is not provided');
+                $this->ReserveContact($webhookdata, null, $mainCampaign, 'Contact send to the Reserve due to Campaign or state is not provided');
             }
             return match (true) {
                 count($agentIds) === 0 => null,
@@ -68,7 +68,6 @@ class ProcessWebhookData implements ShouldQueue
         if (! $sourceUser) {
             $sourceUser = User::where('location_id', 'Xi9xlFZVPhtek5GOUwrS')->first();
 
-
         }
         // \Log::info(["Contact Origniated From That Source having id" => $sourceUser->id ?? null]);
         $sourceUserId = $sourceUser->id;
@@ -80,32 +79,36 @@ class ProcessWebhookData implements ShouldQueue
         $searchContactByEmail = Contact::where(function ($query) use ($email, $contact_id) {
             if ($email) {
                 $query->where('email', $email)
-                      ->orWhere('contact_id', $contact_id);
+                    ->orWhere('contact_id', $contact_id);
             } else {
                 $query->where('contact_id', $contact_id);
             }
         })
-        ->where('status', 'SENT')
-        ->first();
-        if($searchContactByEmail){
+            ->where('status', 'SENT')
+            ->first();
+        if ($searchContactByEmail) {
             \Log::info("Contact Duplication Alert Please check the email : {$email}");
-            appendJobLog($contact_id, 'Contact sent to reserve it already exist in the contact table and sent to the agent id : '.$searchContactByEmail->agent_id ?? null);
-            $this->ReserveContact($webhookdata, null, $mainCampaign,'Contact sent to reserve it already exist in the contact table and sent to the agent id : '.$searchContactByEmail->agent_id ?? null);
+            appendJobLog(
+                $contact_id,
+                'Contact sent to reserve — it already exists in the contact table and was sent to agent: ' .
+                ($searchContactByEmail->agent?->name ?? ($searchContactByEmail->agent_id ?: 'Null'))
+            );
+
+            $this->ReserveContact($webhookdata, null, $mainCampaign, 'Contact sent to reserve it already exist in the contact table and sent to the agent id : ' . ($searchContactByEmail->agent?->name ?? ($searchContactByEmail->agent_id ?: 'Null')));
             return;
         }
         $proccessContact = ProccessContact::where(function ($query) use ($email, $contact_id) {
-                if ($email) {
-                    $query->where('email', $email)
-                          ->orWhere('contact_id', $contact_id);
-                } else {
-                    $query->where('contact_id', $contact_id);
-                }
-            })
+            if ($email) {
+                $query->where('email', $email)
+                    ->orWhere('contact_id', $contact_id);
+            } else {
+                $query->where('contact_id', $contact_id);
+            }
+        })
             ->whereNotNull('agent_id')
             ->first();
 
-
-        if (!$proccessContact) {
+        if (! $proccessContact) {
             // \Log::info('No Contact Found, Find the Best Agent again for contact id  ' . $contact_id);
             appendJobLog($contact_id, 'No Contact Found in Process table, Find the Best Agent again for contact id  ' . $contact_id);
             //Agents Where state and the campaighn matches
@@ -133,15 +136,15 @@ class ProcessWebhookData implements ShouldQueue
                 if (! is_null($contact_id)) {
                     // Log::info('No Agent Found or Limit Reached, Sent to Reserve');
                     appendJobLog($contact_id, 'No Agent Found or Limit Reached, Sent to Reserve ' . $contact_id);
-                    $this->ReserveContact($webhookdata, null, $mainCampaign,'No Agent Found or Limit Reached, Sent to Reserve ');
+                    $this->ReserveContact($webhookdata, null, $mainCampaign, 'No Agent Found or Limit Reached, Sent to Reserve ');
 
                 }
                 return;
             }
 
             // Group agents by priority
-            $groupedAgents     = $agents->groupBy('priority');
-            $agentIdss = $groupedAgents->map(function ($group) {
+            $groupedAgents = $agents->groupBy('priority');
+            $agentIdss     = $groupedAgents->map(function ($group) {
                 return $group->pluck('id')->toArray();
             });
 
@@ -203,8 +206,7 @@ class ProcessWebhookData implements ShouldQueue
             // If all agents in all priority levels are full, send to reserve
             // Log::info('All Agents weightage is full and limits reached. Sending to reserve.');
             appendJobLog($contact_id, 'All Agents weightage is full and limits reached. Sending to reserve ' . $contact_id);
-            $this->ReserveContact($webhookdata, null, $mainCampaign,'All Agents weightage is full and limits reached. Sending to reserve');
-
+            $this->ReserveContact($webhookdata, null, $mainCampaign, 'All Agents weightage is full and limits reached. Sending to reserve');
 
         } else {
             // Process contact and assign it to the agent
@@ -344,7 +346,7 @@ class ProcessWebhookData implements ShouldQueue
         ];
         $agentUser = User::where('agent_id', $agent->id ?? '')->first();
         \Log::info('Destination location of  the Agent Id ' . $agentUser->id ?? '' . ' ' . $agentUser->location_id ?? '');
-        appendJobLog($contact->contact_id,'Destination location of  the Agent Id ' . $agentUser->id ?? '' . ' ' . $agentUser->location_id ?? '');
+        appendJobLog($contact->contact_id, 'Destination location of  the Agent Id ' . $agentUser->id ?? '' . ' ' . $agentUser->location_id ?? '');
         if ($agentUser) {
             $token = \App\Models\GhlAuth::where('location_id', $agentUser->location_id)->where('user_id', $agentUser->id ?? '')->first();
             if (! $token) {
@@ -357,13 +359,13 @@ class ProcessWebhookData implements ShouldQueue
             sleep(15);
 
             \Log::info('This ApiCall made by  this agent having id : ' . $agentUser->id . 'and the location id: ' . $agentUser->location_id ?? '');
-            appendJobLog($contact->contact_id,'This ApiCall made by  this agent having id : ' . $agentUser->id . 'and the location id: ' . $agentUser->location_id ?? '');
+            appendJobLog($contact->contact_id, 'This ApiCall made by  this agent having id : ' . $agentUser->id . 'and the location id: ' . $agentUser->location_id ?? '');
             $response = \App\Helpers\CRM::crmV2($agentUser->id, $url, 'POST', $newdata, [], false, $agentUser->location_id, $token);
             \Log::info('response.', ['url' => $url, 'response' => $response]);
             if ($response && property_exists($response, 'contact')) {
                 $contact->status = 'Sent';
                 $contact->save();
-                appendJobLog($contact->contact_id,'Contact sent Successfully to that agent  : ' . $agentUser->agent_id . 'and the location id: ' . $agentUser->location_id ?? '');
+                appendJobLog($contact->contact_id, 'Contact sent Successfully to that agent  : ' . $agentUser->agent_id . 'and the location id: ' . $agentUser->location_id ?? '');
 
             } else {
                 $agent->decrement('agent_count_weightage', 1);
@@ -371,7 +373,7 @@ class ProcessWebhookData implements ShouldQueue
                 $contact   = Contact::where('id', $contactId)->first();
                 \Log::info('Contact Not submitted or Sent Due to this reason ' . json_encode($response));
                 \Log::info('This contact is delete  from the Contact and  process table sent to resever contact ' . $contactId);
-                appendJobLog($contact->contact_id,'Contact Not submitted or Sent Due to this reason ' . json_encode($response));
+                appendJobLog($contact->contact_id, 'Contact Not submitted or Sent Due to this reason ' . json_encode($response));
                 $message = json_decode(base64_decode($contact->contact_json), true);
                 Logs::updateOrCreate(
                     ['contact_id' => $contact->contact_id],
@@ -426,144 +428,143 @@ class ProcessWebhookData implements ShouldQueue
         }
     }
     protected function customFields($customData, $agent)
-{
-    $noMatch=[];
-    $customData = json_decode(base64_decode($customData), true);
-    if (!is_array($customData)) {
-        throw new \Exception("Invalid custom data format.");
-    }
+    {
+        $noMatch    = [];
+        $customData = json_decode(base64_decode($customData), true);
+        if (! is_array($customData)) {
+            throw new \Exception("Invalid custom data format.");
+        }
 
-    $location_id = $customData['location']['id'] ?? null;
-    $user = User::where('agent_id', $agent->id ?? '')->first();
+        $location_id = $customData['location']['id'] ?? null;
+        $user        = User::where('agent_id', $agent->id ?? '')->first();
 
-    $locationId = $user ? $user->location_id : null;
-    $location_id = $agent->destination_location ?? $customData['location']['id'] ?? null;
+        $locationId  = $user ? $user->location_id : null;
+        $location_id = $agent->destination_location ?? $customData['location']['id'] ?? null;
 
-    $customFields = CustomField::select('cf_name', 'cf_id', 'cf_key')
-        ->where('location_id', $location_id)
-        ->get();
+        $customFields = CustomField::select('cf_name', 'cf_id', 'cf_key')
+            ->where('location_id', $location_id)
+            ->get();
 
         $customFieldsMap = $customFields->pluck('cf_key', 'cf_name')->mapWithKeys(function ($value, $key) {
             return [
-                preg_replace('/\s+/', ' ', trim($key)) => preg_replace('/\s+/', ' ', trim($value))
+                preg_replace('/\s+/', ' ', trim($key)) => preg_replace('/\s+/', ' ', trim($value)),
             ];
         })->toArray();
 
+        $customFieldData = [];
 
-    $customFieldData = [];
+        foreach ($customData as $key => $value) {
+            $key = trim($key);
 
-    foreach ($customData as $key => $value) {
-        $key = trim($key);
+            if ($key === 'contact_id') {
+                break;
+            }
 
-        if ($key === 'contact_id') {
-            break;
-        }
+            if (array_key_exists($key, $customFieldsMap)) {
+                $cfKey    = $customFieldsMap[$key];
+                $cfRecord = $customFields->firstWhere('cf_key', $cfKey);
+                $cfId     = $cfRecord ? $cfRecord->cf_id : null;
+                $meta     = is_array($value) && isset($value['meta']) ? (object) $value['meta'] : null;
 
-        if (array_key_exists($key, $customFieldsMap)) {
-            $cfKey = $customFieldsMap[$key];
-            $cfRecord = $customFields->firstWhere('cf_key', $cfKey);
-            $cfId = $cfRecord ? $cfRecord->cf_id : null;
-            $meta = is_array($value) && isset($value['meta']) ? (object) $value['meta'] : null;
-
-            if ($meta) {
-                $value['meta'] = $meta;
-                $customFieldData[] = (object) [
-                    'id' => $cfId,
-                    'key' => str_replace('contact.', '', $cfKey),
-                    'field_value' => is_array($value) ? (object) $value : [$value],
-                ];
-            } elseif (strpos(strtolower($key), 'pdf file') !== false || strpos(strtolower($key), 'selected plan image') !== false) {
-                $customFieldData[] = (object) [
-                    'id' => $cfId,
-                    'key' => str_replace('contact.', '', $cfKey),
-                    'field_value' => is_array($value) ? $value[0] : $value,
-                ];
-            } else {
-                if(!is_null( $cfId)){
+                if ($meta) {
+                    $value['meta']     = $meta;
                     $customFieldData[] = (object) [
-                        'id' => $cfId,
-                        'key' => str_replace('contact.', '', $cfKey),
+                        'id'          => $cfId,
+                        'key'         => str_replace('contact.', '', $cfKey),
+                        'field_value' => is_array($value) ? (object) $value : [$value],
+                    ];
+                } elseif (strpos(strtolower($key), 'pdf file') !== false || strpos(strtolower($key), 'selected plan image') !== false) {
+                    $customFieldData[] = (object) [
+                        'id'          => $cfId,
+                        'key'         => str_replace('contact.', '', $cfKey),
+                        'field_value' => is_array($value) ? $value[0] : $value,
+                    ];
+                } else {
+                    if (! is_null($cfId)) {
+                        $customFieldData[] = (object) [
+                            'id'          => $cfId,
+                            'key'         => str_replace('contact.', '', $cfKey),
+                            'field_value' => $value,
+                        ];
+                    }
+                }
+            } else {
+                $noMatch[] = $key;
+
+            }
+        }
+        \Log::info("No match for custom field from the above data Checking below:", ['noMatch' => $noMatch]);
+        if (! empty($customData['customData'])) {
+            foreach ($customData['customData'] as $cdkey => $value) {
+                $cdkey = trim($cdkey);
+                // if(strpos($cdkey, 'Spouse') !== false ){
+                //     \Log::info("Spouse found: " . $cdkey  . " value: " . json_encode($value));
+                // }
+                if (! (array_key_exists($cdkey, $customFieldsMap))) {
+                    continue;
+                }
+                $cfKey    = $customFieldsMap[$cdkey];
+                $cfRecord = $customFields->firstWhere('cf_key', $cfKey);
+                $cfId     = $cfRecord ? $cfRecord->cf_id : null;
+                // if(strpos($cdkey, 'Spouse') !== false ){
+                //     \Log::info("Spouse found: " . $cdkey  . " value: " . json_encode($value) . "  id: " . $cfId);
+                // }
+                if (is_null($cfId)) {
+                    continue;
+                }
+
+                $existingField = collect($customFieldData)->firstWhere('id', $cfId);
+                // if(strpos($cdkey, 'Spouse') !== false ){
+                //     \Log::info("Spouse found: " . $cdkey  . " value: " . json_encode($value) . "  Existing : " . json_encode($existingField));
+                // }
+                if ($existingField) {
+                    if (! is_null($existingField->field_value) && $existingField->field_value !== '') {
+                        continue;
+                    } else {
+                        $meta = is_array($value) && isset($value['meta']) ? (object) $value['meta'] : null;
+
+                        if ($meta) {
+                            $value['meta']              = $meta;
+                            $existingField->field_value = is_array($value) ? (object) $value : [$value];
+                        } elseif (strpos(strtolower($cdkey), 'pdf file') !== false || strpos(strtolower($cdkey), 'selected plan image') !== false) {
+                            $existingField->field_value = is_array($value) ? $value[0] : $value;
+                        } else {
+                            $existingField->field_value = $value;
+                        }
+                        continue;
+                    }
+                }
+
+                $meta = is_array($value) && isset($value['meta']) ? (object) $value['meta'] : null;
+
+                if ($meta) {
+                    $value['meta']     = $meta;
+                    $customFieldData[] = (object) [
+                        'id'          => $cfId,
+                        'key'         => str_replace('contact.', '', $cfKey),
+                        'field_value' => is_array($value) ? (object) $value : [$value],
+                    ];
+                } elseif (strpos(strtolower($cdkey), 'pdf file') !== false || strpos(strtolower($cdkey), 'selected plan image') !== false) {
+                    $customFieldData[] = (object) [
+                        'id'          => $cfId,
+                        'key'         => str_replace('contact.', '', $cfKey),
+                        'field_value' => is_array($value) ? $value[0] : $value,
+                    ];
+                } else {
+                    $customFieldData[] = (object) [
+                        'id'          => $cfId,
+                        'key'         => str_replace('contact.', '', $cfKey),
                         'field_value' => $value,
                     ];
+                    // if(strpos($cdkey, 'Spouse') !== false ){
+                    //     \Log::info("Spouse found cf dtaa: " . json_encode($customFieldData) );
+                    // }
                 }
             }
-        } else {
-            $noMatch[] = $key;
-
         }
-    }
-    \Log::info("No match for custom field from the above data Checking below:", ['noMatch' => $noMatch]);
-    if (!empty($customData['customData'])) {
-        foreach ($customData['customData'] as $cdkey => $value) {
-            $cdkey = trim($cdkey);
-            // if(strpos($cdkey, 'Spouse') !== false ){
-            //     \Log::info("Spouse found: " . $cdkey  . " value: " . json_encode($value));
-            // }
-            if (!(array_key_exists($cdkey, $customFieldsMap))) {
-                continue;
-            }
-            $cfKey = $customFieldsMap[$cdkey];
-            $cfRecord = $customFields->firstWhere('cf_key', $cfKey);
-            $cfId = $cfRecord ? $cfRecord->cf_id : null;
-            // if(strpos($cdkey, 'Spouse') !== false ){
-            //     \Log::info("Spouse found: " . $cdkey  . " value: " . json_encode($value) . "  id: " . $cfId);
-            // }
-            if (is_null($cfId)) {
-                continue;
-            }
-
-            $existingField = collect($customFieldData)->firstWhere('id', $cfId);
-            // if(strpos($cdkey, 'Spouse') !== false ){
-            //     \Log::info("Spouse found: " . $cdkey  . " value: " . json_encode($value) . "  Existing : " . json_encode($existingField));
-            // }
-            if ($existingField) {
-                if (!is_null($existingField->field_value) && $existingField->field_value !== '') {
-                    continue;
-                } else {
-                    $meta = is_array($value) && isset($value['meta']) ? (object) $value['meta'] : null;
-
-                    if ($meta) {
-                        $value['meta'] = $meta;
-                        $existingField->field_value = is_array($value) ? (object) $value : [$value];
-                    } elseif (strpos(strtolower($cdkey), 'pdf file') !== false || strpos(strtolower($cdkey), 'selected plan image') !== false) {
-                        $existingField->field_value = is_array($value) ? $value[0] : $value;
-                    } else {
-                        $existingField->field_value = $value;
-                    }
-                    continue;
-                }
-            }
-
-            $meta = is_array($value) && isset($value['meta']) ? (object) $value['meta'] : null;
-
-            if ($meta) {
-                $value['meta'] = $meta;
-                $customFieldData[] = (object) [
-                    'id' => $cfId,
-                    'key' => str_replace('contact.', '', $cfKey),
-                    'field_value' => is_array($value) ? (object) $value : [$value],
-                ];
-            } elseif (strpos(strtolower($cdkey), 'pdf file') !== false || strpos(strtolower($cdkey), 'selected plan image') !== false) {
-                $customFieldData[] = (object) [
-                    'id' => $cfId,
-                    'key' => str_replace('contact.', '', $cfKey),
-                    'field_value' => is_array($value) ? $value[0] : $value,
-                ];
-            } else {
-                $customFieldData[] = (object) [
-                    'id' => $cfId,
-                    'key' => str_replace('contact.', '', $cfKey),
-                    'field_value' => $value,
-                ];
-                // if(strpos($cdkey, 'Spouse') !== false ){
-                //     \Log::info("Spouse found cf dtaa: " . json_encode($customFieldData) );
-                // }
-            }
-        }
-    }
         // \Log::info('Date of CF we Sent :  ' .json_encode($customFieldData) );
-    return $customFieldData;
-}
+        return $customFieldData;
+    }
     protected function connectLocationFirst($agentUser)
     {
         $token           = GhlAuth::where('user_id', User::where('role', 0)->first()->id)->first();
@@ -607,7 +608,7 @@ class ProcessWebhookData implements ShouldQueue
             return $ghl;
         }
     }
-    protected function ReserveContact($data, $agent = null, $campaign,$reason = null)
+    protected function ReserveContact($data, $agent = null, $campaign, $reason = null)
     {
         $type           = $data['customData'];
         $contact_id     = $data['contact_id'];

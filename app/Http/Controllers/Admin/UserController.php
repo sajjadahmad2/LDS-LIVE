@@ -26,26 +26,34 @@ class UserController extends Controller
             return Datatables::of($data)
                 ->addIndexColumn()
                 ->addColumn('action', function ($row) {
-                    $btn = '<div class="row row-cols-auto g-3">';
-                    // Edit button
-                    $btn .= '<div class="col">';
-                    $btn .= '<button type="button" class="btn btn-primary"   data-bs-toggle="modal" data-bs-target="#userModal" onclick="savaData(\'' . $row->id . '\', \'' . $row->name . '\', \'' . $row->email . '\', \'' . $row->password . '\', \'' . $row->role . '\', \'' . $row->location_id . '\')"><i class="bx bx-edit py-2"></i></button>';
-                    $btn .= '</div>';
-                    $btn .= '<div class="col">';
-                    $btn .= '<a href="' . route($this->route . '.autoLogin', $row->id) . '" class="btn btn-outline-success" data-bs-toggle="tooltip" data-bs-placement="top" title="Auto Login"><i class="bx bx-user py-2"></i></a>';
-                    $btn .= '</div>';
-                    $btn .= '<div class="col">';
-                    $btn .= '<a href="javascript:void(0);" class="btn btn-outline-danger confirm-delete" data-id="' . $row->id . '" data-bs-toggle="tooltip" data-bs-placement="top" title="Delete User"><i class="bx bx-trash py-2"></i></a>';
-                    $btn .= '</div>';
-                    $btn .= '<div class="col">';
-                    // $btn .= '<a href="javascript:void(0);" class="btn btn-primary fetch_customField" data-customField="' .$row->location_id. '" data-bs-toggle="tooltip" data-bs-placement="top" title="Fetch Location"><i class="lni lni-pencil py-2"></i></a>';
-                    // $btn .= '</div>';
-                    $btn .= '<div class="col">';
-                    $btn .= '<a href="javascript:void(0);" class="btn btn-outline-success status_changes" data-status="' . $row->id . '" data-bs-toggle="tooltip" data-bs-placement="top" title="Change Status"><i class="bx bxs-low-vision py-2"></i></a>';
-                    $btn .= '</div>';
-                    $btn .= '</div>';
-
-                    return $btn;
+                    return '<div class="dropdown">
+                                <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    Actions
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li>
+                                        <a href="javascript:void(0);" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#userModal"
+                                           onclick="savaData(\'' . $row->id . '\', \'' . $row->name . '\', \'' . $row->email . '\', \'' . $row->password . '\', \'' . $row->role . '\', \'' . $row->location_id . '\')">
+                                           <i class="bx bx-edit"></i> Edit
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a href="' . route($this->route . '.autoLogin', $row->id) . '" class="dropdown-item">
+                                            <i class="bx bx-user"></i> Auto Login
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a href="javascript:void(0);" class="dropdown-item confirm-delete" data-id="' . $row->id . '">
+                                            <i class="bx bx-trash"></i> Delete
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a href="javascript:void(0);" class="dropdown-item status_changes" data-status="' . $row->id . '">
+                                            <i class="bx bxs-low-vision"></i> Change Status
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>';
                 })
                 ->rawColumns(['action'])
                 ->make(true);
