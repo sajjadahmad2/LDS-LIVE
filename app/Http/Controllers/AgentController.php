@@ -506,8 +506,7 @@ class AgentController extends Controller
         $data = null;
 
         if ($type === "agent" || $type === 'campaign') {
-            if (($campaignId == 'all' && $agentId == 'all') || ($campaignId == null && $agentId == null)) {
-
+            if ($campaignId == null && $agentId == 'all') {
                 return response()->json([
                     'success'  => true,
                     'message'  => "Get All data successfully.",
@@ -516,16 +515,15 @@ class AgentController extends Controller
                 ], 200);
                 return redirect()->route('admin.dashboard');
             }
-            if (! is_null($campaignId) && (is_null($agentId) || $agentId == 'all')) {
-                $agentId = CampaignAgent::where('campaign_id', $campaignId)->pluck('agent_id')->toArray();
+            if (! is_null($campaignId) && $campaignId !== 'all') {
+                // This block runs only if $campaignId is NOT null and NOT 'all'
 
+                $agentId = CampaignAgent::where('campaign_id', $campaignId)->pluck('agent_id')->toArray();
             } else {
                 $aid       = $agentId;
                 $agentId   = [];
                 $agentId[] = $aid;
             }
-
-
 
             $query = Agent::select(
                 'agents.id',
@@ -538,11 +536,11 @@ class AgentController extends Controller
                 DB::raw('(SELECT COUNT(*) FROM contacts WHERE contacts.agent_id = agents.id AND DATE(contacts.created_at) = CURRENT_DATE) as daily_contacts_count'),
                 DB::raw('(SELECT COUNT(*) FROM contacts WHERE contacts.agent_id = agents.id' . (
                     ! empty($startDate) && ! empty($endDate)
-                    ? ' AND contacts.created_at  BETWEEN "' . $startDate . '" AND "' . $endDate . '"'
+                    ? ' AND contacts.created_at BETWEEN "' . $startDate . '" AND "' . $endDate . '"'
                     : ''
                 ) . ') as total_contacts_count')
             )
-                ->leftJoin('contacts', 'agents.id', '=', 'contacts.agent_id')
+                ->whereIn('agents.id', $agentId)
                 ->groupBy(
                     'agents.id',
                     'agents.priority',
@@ -551,10 +549,13 @@ class AgentController extends Controller
                     'agents.total_limit',
                     'agents.name'
                 )
-                ->whereIn("agents.id", $agentId);
-            if (! empty($startDate) && ! empty($endDate)) {
-                $query->whereBetween('agents.created_at', [$startDate, $endDate]);
-            }
+                ->orderBy('agents.priority', 'asc')
+                ->orderByRaw('(agents.monthly_limit - monthly_contacts_count) desc')
+                ->orderByRaw('(agents.daily_limit - daily_contacts_count) desc')
+                ->orderByRaw('(agents.total_limit - total_contacts_count) desc');
+
+            $data = $query->get();
+
             $data = $query
                 ->orderBy('agents.priority', 'asc')
                 ->orderByRaw('(agents.monthly_limit - monthly_contacts_count) desc')
