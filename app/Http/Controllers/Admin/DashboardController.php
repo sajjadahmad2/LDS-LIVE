@@ -17,13 +17,13 @@ class DashboardController extends Controller
     public function index()
     {
         if (is_role() == 'admin') {
-            $agents    = $this->getAgentsByUser(login_id());
+            $agents = $this->getAgentsByUser(login_id());
             // $campaigns = $this->getCampaignsByUser(login_id());
 
             // $data = $this->getAgentStatsQuery(login_id())->get();
 
         } elseif (is_role() == 'superadmin') {
-            $agents    = Agent::all();
+            $agents = Agent::all();
             // $campaigns = Campaign::all();
             // $data      = $this->getAgentStatsQuery(null)->get(); // Get all agents
 
@@ -115,6 +115,38 @@ class DashboardController extends Controller
     /**
      * Get agent statistics query
      */
+    // private function getAgentStatsQuery($userId = null)
+    // {
+    //     $query = Agent::select(
+    //         'agents.id',
+    //         'agents.priority',
+    //         'agents.daily_limit',
+    //         'agents.monthly_limit',
+    //         'agents.total_limit',
+    //         'agents.name',
+    //         DB::raw('(SELECT COUNT(*) FROM contacts WHERE contacts.agent_id = agents.id AND MONTH(contacts.created_at) = MONTH(CURRENT_DATE)) as monthly_contacts_count'),
+    //         DB::raw('(SELECT COUNT(*) FROM contacts WHERE contacts.agent_id = agents.id AND DATE(contacts.created_at) = CURRENT_DATE) as daily_contacts_count'),
+    //         DB::raw('(SELECT COUNT(*) FROM contacts WHERE contacts.agent_id = agents.id) as total_contacts_count')
+    //     )
+    //         ->leftJoin('contacts', 'agents.id', '=', 'contacts.agent_id')
+    //         ->groupBy(
+    //             'agents.id',
+    //             'agents.priority',
+    //             'agents.daily_limit',
+    //             'agents.monthly_limit',
+    //             'agents.total_limit',
+    //             'agents.name'
+    //         )
+    //         ->orderBy('agents.priority', 'asc')
+    //         ->orderByRaw('(agents.monthly_limit - monthly_contacts_count) desc')
+    //         ->orderByRaw('(agents.daily_limit - daily_contacts_count) desc')
+    //         ->orderByRaw('(agents.total_limit - total_contacts_count) desc');
+    //     if ($userId) {
+    //         $query->where('agents.user_id', $userId);
+    //     }
+
+    //     return $query;
+    // }
     private function getAgentStatsQuery($userId = null)
     {
         $query = Agent::select(
@@ -124,9 +156,11 @@ class DashboardController extends Controller
             'agents.monthly_limit',
             'agents.total_limit',
             'agents.name',
-            DB::raw('(SELECT COUNT(*) FROM contacts WHERE contacts.agent_id = agents.id AND MONTH(contacts.created_at) = MONTH(CURRENT_DATE)) as monthly_contacts_count'),
-            DB::raw('(SELECT COUNT(*) FROM contacts WHERE contacts.agent_id = agents.id AND DATE(contacts.created_at) = CURRENT_DATE) as daily_contacts_count'),
-            DB::raw('(SELECT COUNT(*) FROM contacts WHERE contacts.agent_id = agents.id) as total_contacts_count')
+            DB::raw("COUNT(contacts.id) as total_contacts_count"),
+            DB::raw("SUM(CASE WHEN DATE(contacts.created_at) = CURRENT_DATE THEN 1 ELSE 0 END) as daily_contacts_count"),
+            DB::raw("SUM(CASE WHEN MONTH(contacts.created_at) = MONTH(CURRENT_DATE)
+                          AND YEAR(contacts.created_at) = YEAR(CURRENT_DATE)
+                          THEN 1 ELSE 0 END) as monthly_contacts_count")
         )
             ->leftJoin('contacts', 'agents.id', '=', 'contacts.agent_id')
             ->groupBy(
@@ -141,12 +175,14 @@ class DashboardController extends Controller
             ->orderByRaw('(agents.monthly_limit - monthly_contacts_count) desc')
             ->orderByRaw('(agents.daily_limit - daily_contacts_count) desc')
             ->orderByRaw('(agents.total_limit - total_contacts_count) desc');
+
         if ($userId) {
             $query->where('agents.user_id', $userId);
         }
 
         return $query;
     }
+
     public function getCustomField(Request $request)
     {
         ini_set('memory_limit', '-1');
