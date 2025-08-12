@@ -241,6 +241,7 @@
                             return;
                         }
                         if (response.data !== null) {
+                            console.log(response.data);
                             response.data.forEach((item, index) => {
                                 tableRows += `
                     <tr>
