@@ -55,14 +55,14 @@ class AgentController extends Controller
                 $dates = explode(' to ', $request->customDateRange);
                 if (count($dates) == 2) {
                     $startDate = Carbon::createFromFormat('Y-m-d', trim($dates[0]), 'America/Chicago')->startOfDay()->format('Y-m-d H:i:s');
-                    $endDate = Carbon::createFromFormat('Y-m-d', trim($dates[1]), 'America/Chicago')->endOfDay()->format('Y-m-d H:i:s');
+                    $endDate   = Carbon::createFromFormat('Y-m-d', trim($dates[1]), 'America/Chicago')->endOfDay()->format('Y-m-d H:i:s');
                     //\Log::info(["start and End date" => [$startDate, $endDate]]);
                     $data->whereBetween('created_at', [$startDate, $endDate]);
                 }
             }
 
             // Search logic
-            if (!empty($request->search['value'])) {
+            if (! empty($request->search['value'])) {
                 $search = $request->search['value'];
 
                 $data->where(function ($q) use ($search) {
@@ -87,7 +87,7 @@ class AgentController extends Controller
                     $emailExists = \App\Models\User::where('agent_id', $row->id)->exists();
                     // \Log::info(["User Email", $emailExists]);
 
-                    $user = \App\Models\User::where('agent_id', $row->id)->first();
+                    $user        = \App\Models\User::where('agent_id', $row->id)->first();
                     $location_id = [];
                     $from_agents = 0;
 
@@ -101,27 +101,27 @@ class AgentController extends Controller
                     $cross_link = addslashes($row->cross_link ?? '');
                     $weightage  = addslashes($row->weightage ?? '');
 
-                    $consent = json_encode($row->consent, JSON_HEX_APOS | JSON_HEX_QUOT);
+                    $consent      = json_encode($row->consent, JSON_HEX_APOS | JSON_HEX_QUOT);
                     $carrierTypes = json_encode($row->carrierTypes->pluck('carrier_type')->toArray(), JSON_HEX_APOS | JSON_HEX_QUOT);
-                    $states = json_encode($row->states->pluck('id')->toArray(), JSON_HEX_APOS | JSON_HEX_QUOT);
-                    $locations = json_encode($location_id, JSON_HEX_APOS | JSON_HEX_QUOT);
+                    $states       = json_encode($row->states->pluck('id')->toArray(), JSON_HEX_APOS | JSON_HEX_QUOT);
+                    $locations    = json_encode($location_id, JSON_HEX_APOS | JSON_HEX_QUOT);
 
                     if (is_role() == 'superadmin' || is_role() == 'admin') {
                         $btn = '<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#agentModal"
                             onclick="savaAgentData('
-                            . $row->id . ', \''
-                            . addslashes($row->name) . '\', \''
-                            . addslashes($row->email) . '\', \''
-                            . addslashes($row->destination_location) . '\', \''
-                            . addslashes($row->destination_webhook) . '\', \''
-                            . $row->priority . '\', \''
-                            . $row->daily_limit . '\', \''
-                            . $row->monthly_limit . '\', \''
-                            . $row->total_limit . '\', '
-                            . htmlspecialchars($consent, ENT_QUOTES, 'UTF-8') . ', '
-                            . htmlspecialchars($carrierTypes, ENT_QUOTES, 'UTF-8') . ', '
-                            . htmlspecialchars($states, ENT_QUOTES, 'UTF-8') . ', '
-                            . htmlspecialchars($locations, ENT_QUOTES, 'UTF-8') . ', \''
+                        . $row->id . ', \''
+                        . addslashes($row->name) . '\', \''
+                        . addslashes($row->email) . '\', \''
+                        . addslashes($row->destination_location) . '\', \''
+                        . addslashes($row->destination_webhook) . '\', \''
+                        . $row->priority . '\', \''
+                        . $row->daily_limit . '\', \''
+                        . $row->monthly_limit . '\', \''
+                        . $row->total_limit . '\', '
+                        . htmlspecialchars($consent, ENT_QUOTES, 'UTF-8') . ', '
+                        . htmlspecialchars($carrierTypes, ENT_QUOTES, 'UTF-8') . ', '
+                        . htmlspecialchars($states, ENT_QUOTES, 'UTF-8') . ', '
+                        . htmlspecialchars($locations, ENT_QUOTES, 'UTF-8') . ', \''
                             . $npm_number . '\', \''
                             . $weightage . '\', \''
                             . $cross_link . '\', '
@@ -495,13 +495,15 @@ class AgentController extends Controller
             $endDate   = Carbon::createFromFormat('m/d/Y', $dates[1], 'America/Chicago')->endOfDay()->format('Y-m-d H:i:s');
         } else {
             // Default to current month range up to now
-            $startDate = Carbon::now('America/Chicago')
-                ->startOfMonth()
-                ->format('Y-m-d H:i:s');
+            // $startDate = Carbon::now('America/Chicago')
+            //     ->startOfMonth()
+            //     ->format('Y-m-d H:i:s');
 
-            $endDate = Carbon::now('America/Chicago')
-                ->endOfDay() // Or ->now() if you want exact current time
-                ->format('Y-m-d H:i:s');
+            // $endDate = Carbon::now('America/Chicago')
+            //     ->endOfDay() // Or ->now() if you want exact current time
+            //     ->format('Y-m-d H:i:s');
+            $startDate = '';
+            $endDate   = '';
         }
         $data = null;
 
@@ -582,29 +584,29 @@ class AgentController extends Controller
         $agentUser = Agent::select("name", 'id')->where('user_id', '!=', Auth::user()->id)->get();
         return response()->json(['success' => true, "message" => "Agent Fetch Successfully", "data" => $agentUser]);
     }
-    public function searchAgentByAjax(Request $request){
+    public function searchAgentByAjax(Request $request)
+    {
 
         $campaign_id = $request->campaign_id;
         \Log::info(["campaign_id" => $campaign_id]);
         $term = $request->q ?? ($request->term ?? ($request->search ?? ''));
-        $data = Agent::query()->select('name as text', 'id')->where('user_id',login_id());
-        if($campaign_id == '' || $campaign_id == null ){
-            if (!empty($term)) {
+        $data = Agent::query()->select('name as text', 'id')->where('user_id', login_id());
+        if ($campaign_id == '' || $campaign_id == null) {
+            if (! empty($term)) {
                 $data->where(function ($query) use ($term) {
                     $query->where('name', 'LIKE', '%' . $term . '%')->orWhere('id', $term);
                 });
-           }
-        }
-        else{
-            $agentCampaign = CampaignAgent::where('campaign_id',$campaign_id)->pluck('agent_id')->toArray();
+            }
+        } else {
+            $agentCampaign = CampaignAgent::where('campaign_id', $campaign_id)->pluck('agent_id')->toArray();
             $data->whereIn('id', $agentCampaign);
             \Log::info("condation is working");
-            if (!empty($term)) {
+            if (! empty($term)) {
                 $data->where(function ($query) use ($term) {
                     $query->where('name', 'LIKE', '%' . $term . '%')->orWhere('id', $term);
                 });
-           }
-           \Log::info(["Campaign id is woke show data" =>$data->get() ]);
+            }
+            \Log::info(["Campaign id is woke show data" => $data->get()]);
 
         }
         $results = $data->take(100)->get();
