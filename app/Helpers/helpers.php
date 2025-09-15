@@ -435,7 +435,7 @@ function getCarrierType($leadType = null)
         ],
 
         // You can add other lead types here later
-        'FE'       => [
+        'Final Expense - FE'       => [
             "American National Life Insurance Company of Texas",
             "Guarantee Trust Life Insurance Company",
             "Union Fidelity Life Insurance Company",
