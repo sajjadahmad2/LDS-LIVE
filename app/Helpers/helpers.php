@@ -1,7 +1,7 @@
 <?php
 use App\Models\CustomField;
-use App\Models\Setting;
 use App\Models\LeadType;
+use App\Models\Setting;
 use App\Models\State;
 use App\Models\TrackLog;
 use App\Models\User;
@@ -435,7 +435,36 @@ function getCarrierType($leadType = null)
         ],
 
         // You can add other lead types here later
-        'FE'       => [],
+        'FE'       => [
+            "American National Life Insurance Company of Texas",
+            "Guarantee Trust Life Insurance Company",
+            "Union Fidelity Life Insurance Company",
+            "Transamerica Life Insurance Company",
+            "Washington National Insurance Company",
+            "Thrivent Financial for Lutherans",
+            "Knights of Columbus",
+            "United of Omaha Life Insurance Company",
+            "National Guardian Life Insurance Company",
+            "Pekin Life Insurance Company",
+            "American General Life Insurance Company",
+            "TransAmerica Premier Life Insurance",
+            "American Income Life Insurance Co",
+            "Liberty National Life Insurance Co",
+            "United American Insurance Co",
+            "Globe Life and Accident Insurance Co",
+            "Mutual of Omaha Insurance Company",
+            "American General Life and Accident Insurance Company",
+            "Standard Life and Accident Insurance Company",
+            "Fidelity Life Association",
+            "Assurity Life Insurance Company",
+            "National Guardian Life Insurance",
+            "United of Omaha Life Insurance Company ",
+            "Loyal American Life Insurance Company",
+            "Pekin LIfe Insurance Company",
+            "American General Life and Accident",
+            "Physicians Mutual",
+            "NATIONAL GUARDIAN LIFE INSURANCE COMPANY",
+        ],
         'Medicare' => [
             "UnitedHealthcare",
             "Humana",
