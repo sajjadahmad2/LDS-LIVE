@@ -55,6 +55,7 @@ $(function() {
             { data: 'state', name: 'state' },
             { data: 'reason', name: 'reason' },
             {data:'contact_source',name:'contact_source'},
+            
 
         ]
     });
