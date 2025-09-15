@@ -27,9 +27,9 @@
     @if (is_role() == 'superadmin' || is_role() == 'admin')
         <button type="button" class="btn btn-primary me-2 mb-3" data-bs-toggle="modal" data-bs-target="#campaignModal"
             onclick="savaCampaignData(0, '',[],'','')">Add Campaign</button>
-        <button type="button" class="btn btn-success mb-3" data-bs-toggle="modal" data-bs-target="#copyWebhookModal">
+        {{-- <button type="button" class="btn btn-success mb-3" data-bs-toggle="modal" data-bs-target="#copyWebhookModal">
             Copy Webhook URL
-        </button>
+        </button> --}}
         <hr />
     @endif
     <div class="card">
