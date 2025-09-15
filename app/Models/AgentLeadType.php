@@ -5,15 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class AgentCarrierType extends Model
+class AgentLeadType extends Model
 {
     use HasFactory;
-
-    protected $table = 'agent_carrier_types';
+    protected $table = 'agent_lead_types';
     protected $guarded = [];
-    /**
-     * Define the relationship with the Agent model.
-     */
+
     public function agent()
     {
         return $this->belongsTo(Agent::class);
@@ -22,6 +19,8 @@ class AgentCarrierType extends Model
     {
         return $this->belongsTo(LeadType::class, 'lead_type');
     }
-
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }
-

@@ -1,6 +1,14 @@
 @extends('admin.layouts.index')
 
 @section('css')
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        .agent-row td:last-child {
+  text-align: center;
+  vertical-align: middle;
+}
+
+    </style>
 @endsection
 
 @section('content')
@@ -32,9 +40,6 @@
                         <tr>
                             <th>ID</th>
                             <th>Campaign Name</th>
-                            <th>Agents</th>
-                            <th>Priority</th>
-                            <th>Weightage</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -72,45 +77,55 @@
         </div>
     </div>
     <!-- Modal for Add/Edit -->
+    <!-- Campaign Modal -->
     <div class="modal fade" id="campaignModal" tabindex="-1" aria-labelledby="campaignModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="campaignModalLabel">Add/Edit Campaign</h5>
+            <div class="modal-content border-0 shadow rounded-4">
+                <div class="modal-header bg-white border-bottom-0 px-4 py-3">
+                    <h5 class="modal-title fw-semibold" id="campaignModalLabel">Add / Edit Campaign</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body">
-                    <form id="campaignForm" method="POST">
-                        @csrf
-                        <input type="hidden" id="campaign_id" name="id">
 
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="campaign_name" class="form-label">Campaign Name</label>
-                                <input type="text" id="campaign_name" name="campaign_name" class="form-control"
-                                    placeholder="Enter Campaign Name">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="agents" class="form-label">Agents</label>
-                                <select id="agents" name="agents[]" class="form-select" multiple="multiple"
-                                style="width: 100%;" required onchange="getAgent(this, '')">
-                                @foreach ($agents as $agent)
-                                    <option value="{{ $agent->id }}">{{ $agent->name }}</option>
-                                @endforeach
-                            </select>
-                            </div>
-                        </div>
-                        <div class="row mt-3" id="user-fields">
+                <form id="campaignForm" method="POST">
+                    @csrf
+                    <input type="hidden" id="campaign_id" name="id" />
+
+                    <div class="modal-body px-4">
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">Campaign Name</label>
+                            <input type="text" id="campaign_name" name="campaign_name" class="form-control rounded-3"
+                                placeholder="Enter Campaign Name" required>
                         </div>
 
-                        <div class="row">
+                        <div class="mb-3 text-end">
+                            <button type="button" class="btn btn-outline-primary btn-sm rounded-pill" id="addAgentBtn">
+                                <i class="bi bi-plus-circle me-1"></i> Add Agent
+                            </button>
                         </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                            <button type="submit" class="btn btn-success" id="submitButton">Save</button>
+                        <div class="table-responsive">
+                            <table class="table table-borderless align-middle mb-0">
+                                <thead class="bg-light">
+                                    <tr>
+                                        <th>Agent <span class="text-danger">*</span></th>
+                                        <th>Priority</th>
+                                        <th>Weightage</th>
+                                        <th class="text-end">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="agent-fields"></tbody>
+                            </table>
                         </div>
-                    </form>
-                </div>
+
+                        {{-- <div id="agent-fields" class="row gy-3"></div> --}}
+                    </div>
+
+                    <div class="modal-footer bg-white border-top-0 px-4 py-3">
+                        <button type="button" class="btn btn-light border rounded-pill"
+                            data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary rounded-pill px-4" id="submitButton">Save
+                            Campaign</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -118,71 +133,140 @@
 
 @section('scripts')
     <script type="text/javascript">
+        const agentsData = @json($agents);
+
         $(document).ready(function() {
-            loadCampaigns();
-            $('#agents').select2({
-                dropdownParent: $('#campaignModal'),
-                width: '100%'
+            const agentContainer = $('#agent-fields');
+            const campaignForm = $('#campaignForm');
+            const submitButton = $('#submitButton');
+            const campaignDropdown = $('#campaignDropdown');
+            const webhookUrlInput = $('#webhookUrl');
+            const copyWebhookBtn = $('#copyWebhookBtn');
+
+            // ===========================
+            // Agent Management Functions
+            // ===========================
+
+            function refreshAgentOptions() {
+                const selected = agentContainer.find('.agent-select').map(function() {
+                    return $(this).val();
+                }).get();
+
+                agentContainer.find('.agent-select').each(function() {
+                    const currentSelect = $(this);
+                    const currentVal = currentSelect.val();
+
+                    currentSelect.empty();
+                    agentsData.forEach(agent => {
+                        if (!selected.includes(String(agent.id)) || String(agent.id) ===
+                            currentVal) {
+                            currentSelect.append(
+                                `<option value="${agent.id}">${agent.name}</option>`);
+                        }
+                    });
+                    currentSelect.val(currentVal);
+                });
+            }
+
+            function appendAgentRow(agentId = "", priority = "", weightage = "") {
+                const rowId = Date.now() + Math.floor(Math.random() * 1000);
+
+                const agentOptions = [
+                    `<option value="">Choose agent</option>`,
+                    ...agentsData.map(a =>
+                        `<option value="${a.id}" ${a.id == agentId ? 'selected' : ''}>${a.name}</option>`
+                    )
+                ].join('');
+
+                const row = $(`
+                    <tr class="agent-row" data-id="${rowId}">
+                        <td>
+                        <select name="agents[${rowId}]" class="form-select form-select-sm rounded-2 agent-select" required>
+                            ${agentOptions}
+                        </select>
+                        </td>
+                        <td>
+                        <input type="number" name="priority[${rowId}]" class="form-control form-control-sm rounded-2" value="${priority}" placeholder="e.g. 1" />
+                        </td>
+                        <td>
+                        <input type="number" name="weightage[${rowId}]" class="form-control form-control-sm rounded-2" value="${weightage}" placeholder="e.g. 50" />
+                        </td>
+                        <td class="text-end">
+                        <a href="javascript:void(0);" class="text-danger fs-5 remove-agent" title="Remove">
+                        <i class="bi bi-trash"></i>
+                        </a>
+
+                        </td>
+                    </tr>
+                    `);
+
+                $('#agent-fields').prepend(row);
+                refreshAgentOptions();
+            }
+            // Add Agent Button
+            $('#addAgentBtn').on('click', function() {
+                appendAgentRow();
             });
 
-            var table = $('#campaignsTable').DataTable({
-                processing: true,
-                serverSide: true,
-                ajax: "{{ route('admin.campaigns.index') }}",
-                columns: [{
-                        data: 'id',
-                        name: 'id'
-                    },
-                    {
-                        data: 'campaign_name',
-                        name: 'campaign_name'
-                    },
-                    {
-                        data: 'agents',
-                        name: 'agents'
-                    },
-
-                    {
-                        data: 'priority',
-                        name: 'priority'
-                    },
-
-                    {
-                        data: 'weightage',
-                        name: 'weightage'
-                    },
-                    {
-                        data: 'action',
-                        name: 'action',
-                        orderable: false,
-                        searchable: false
-                    },
-                ]
+            // Remove Agent Row
+            agentContainer.on('click', '.remove-agent', function() {
+                $(this).closest('.agent-row').remove();
+                refreshAgentOptions();
             });
 
-            $('#campaignForm').submit(function(e) {
+            // Prevent duplicate agent selection
+            agentContainer.on('change', '.agent-select', function() {
+                refreshAgentOptions();
+            });
+
+            // ===========================
+            // Campaign Form Submission
+            // ===========================
+
+            campaignForm.submit(function(e) {
                 e.preventDefault();
-                let formData = $(this).serialize();
-                let submitButton = $('#submitButton');
-                submitButton.prop('disabled', true).html('Loading...');
+                let isValid = true;
+
+                // Validate campaign name
+                if (!$('#campaign_name').val().trim()) {
+                    toastr.error("Campaign name is required.");
+                    $('#campaign_name').focus();
+                    return;
+                }
+
+                // Validate agent selects
+                $('.agent-select').each(function() {
+                    if (!$(this).val()) {
+                        isValid = false;
+                        $(this).addClass('is-invalid');
+                    } else {
+                        $(this).removeClass('is-invalid');
+                    }
+                });
+
+                if (!isValid) {
+                    toastr.error("All agent rows must have a selected agent.");
+                    return;
+                }
+                let formData = campaignForm.serialize();
                 let campaignId = $('#campaign_id').val();
                 let method = campaignId && campaignId != "0" ? 'PUT' : 'POST';
                 let url = campaignId && campaignId != "0" ?
                     "{{ route('admin.campaigns.update', ':id') }}".replace(':id', campaignId) :
                     "{{ route('admin.campaigns.store') }}";
 
+                submitButton.prop('disabled', true).html('Loading...');
+
                 $.ajax({
                     type: method,
                     url: url,
                     data: formData,
                     success: function(response) {
-                        console.log(response);
                         if (response.success) {
                             submitButton.prop('disabled', false).html('Save');
                             $('#campaignModal').modal('hide');
-                            $('#campaignForm')[0].reset();
-                            $('#agents').val(null).trigger('change');
-                            $('#user-fields').empty();
+                            campaignForm[0].reset();
+                            agentContainer.empty();
                             table.ajax.reload();
                             loadCampaigns();
                         } else {
@@ -197,42 +281,105 @@
                 });
             });
 
+            // ===========================
+            // Edit Campaign Handler
+            // ===========================
             window.savaCampaignData = function(id, campaign_name, agents, priority, weightage) {
-           //console.log(id, campaign_name, agents, priority, weightage);
+                const isNew = !id || id == 0;
 
-    // Set the campaign ID and campaign name
-    $('#campaign_id').val(id);
-    $('#campaign_name').val(campaign_name);
-    // Parse the arrays if they are passed as strings
-    const agentArray = Array.isArray(agents) ? agents : JSON.parse(agents);
-    const priorityArray = Array.isArray(priority) ? priority : JSON.parse(priority);
-    const weightageArray = Array.isArray(weightage) ? weightage : JSON.parse(weightage);
-    // Set the agents in the select field
-    if (agentArray.length) {
-        $('#agents').val(agentArray).trigger('change'); // Select agents
-    } else {
-        $('#agents').val([]).trigger('change'); // Clear selection
-    }
+                $('#campaign_id').val(id);
+                $('#campaign_name').val(campaign_name || '');
 
-    // Clear existing fields in the modal before appending new ones
-    $('#user-fields').empty();
+                const agentContainer = $('#agent-fields');
+                agentContainer.empty(); // Clear all agent rows
 
-    // Append fields for each agent (priority and weightage)
-    agentArray.forEach((agentId, index) => {
-        const agentPriority = priorityArray[index] || "";
-        const agentWeightage = weightageArray[index] || "";
+                if (!isNew) {
+                    const agentArray = Array.isArray(agents) ? agents : JSON.parse(agents);
+                    const priorityArray = Array.isArray(priority) ? priority : JSON.parse(priority);
+                    const weightageArray = Array.isArray(weightage) ? weightage : JSON.parse(weightage);
 
-        const agentName = $('#agents option[value="' + agentId + '"]').text();
+                    agentArray.forEach((agentId, index) => {
+                        const agentPriority = priorityArray[index] || "";
+                        const agentWeightage = weightageArray[index] || "";
+                        appendAgentRow(agentId, agentPriority, agentWeightage);
+                    });
+                }
 
-        // Call appendAgentField to insert the fields dynamically
-        appendAgentField(document.getElementById('user-fields'), agentId, agentName, agentPriority, agentWeightage);
-    });
+                // Reset any validation errors or leftovers
+                $('.agent-select').removeClass('is-invalid');
+                $('#campaign_name').removeClass('is-invalid');
 
-    // Show the modal
-    $('#campaignModal').modal('show');
-};
+                $('#campaignModal').modal('show');
+            };
 
 
+            // ===========================
+            // DataTable + Webhook Handling
+            // ===========================
+
+            const table = $('#campaignsTable').DataTable({
+                processing: true,
+                serverSide: true,
+                ajax: "{{ route('admin.campaigns.index') }}",
+                columns: [{
+                        data: 'id',
+                        name: 'id'
+                    },
+                    {
+                        data: 'campaign_name',
+                        name: 'campaign_name'
+                    },
+                    {
+                        data: 'action',
+                        name: 'action',
+                        orderable: false,
+                        searchable: false
+                    }
+                ]
+            });
+
+            function loadCampaigns() {
+                $.ajax({
+                    url: '/admin/campaign/show',
+                    method: 'GET',
+                    success: function(response) {
+                        let campaignDropdown = $('.campaignDropdown');
+                        campaignDropdown.empty().append(
+                            '<option value="">-- Select a Campaign --</option>');
+                        $.each(response, function(index, campaign) {
+                            campaignDropdown.append('<option value="' + campaign.id + '">' +
+                                campaign.campaign_name + '</option>');
+                        });
+                        campaignDropdown.trigger('change');
+                    },
+                    error: function() {
+                        toastr.error('Failed to load campaigns.');
+                    }
+                });
+            }
+
+
+            // ===========================
+            // Copy  Campaign URL
+            // ===========================
+
+
+            window.copyCampaignUrl = function(campaignId) {
+                const encodedId = btoa(campaignId).slice(0, 40);
+                const baseApiRoute = "{{ route('api.webhook.lead', ['campaign_id' => ':campaign_id']) }}";
+                const webhookUrl = baseApiRoute.replace(':campaign_id', encodedId);
+
+                navigator.clipboard.writeText(webhookUrl).then(() => {
+                    toastr.success("Webhook URL copied to clipboard!", "Success");
+                }).catch(err => {
+                    toastr.error("Failed to copy Webhook URL. Try again.", "Error");
+                    console.error("Clipboard error:", err);
+                });
+            }
+
+            // ===========================
+            // Delete Campaign
+            // ===========================
 
             window.deleteCampaign = function(campaignId) {
                 if (confirm("Are you sure you want to delete this campaign?")) {
@@ -242,7 +389,7 @@
                         data: {
                             "_token": "{{ csrf_token() }}"
                         },
-                        success: function(response) {
+                        success: function() {
                             table.ajax.reload();
                         },
                         error: function(xhr) {
@@ -252,114 +399,8 @@
                 }
             };
 
-            const campaignDropdown = $('#campaignDropdown');
-            const webhookUrlInput = $('#webhookUrl');
-            const copyWebhookBtn = $('#copyWebhookBtn');
-
-            const userId = "{{ auth()->user()->location_id ?? auth()->user()->id }}";
-            const baseApiRoute =
-                "{{ route('api.webhook.lead', ['campaign_id' => ':campaign_id']) }}";
-
-            // Handle Campaign Selection
-            campaignDropdown.on('change', function() {
-                const campaignId = $(this).val();
-                const encodedid = btoa(campaignId).slice(0, 40)
-                if (campaignId) {
-                    const webhookUrl = baseApiRoute
-                        .replace(':campaign_id', encodedid);
-                    webhookUrlInput.val(webhookUrl);
-                } else {
-                    webhookUrlInput.val('');
-                }
-            });
-
-            // Copy to Clipboard with Toastr Notification
-            copyWebhookBtn.on('click', function() {
-                const webhookUrl = webhookUrlInput.val();
-                if (webhookUrl) {
-                    navigator.clipboard.writeText(webhookUrl).then(() => {
-                        toastr.success("Webhook URL copied to clipboard!", "Success");
-                    }).catch(err => {
-                        toastr.error("Failed to copy Webhook URL. Try again.", "Error");
-                        console.error("Failed to copy text: ", err);
-                    });
-                } else {
-                    toastr.warning("Please select a campaign first.", "Warning");
-                }
-            });
-
-            // Function to load campaigns into dropdowns
-            function loadCampaigns() {
-                $.ajax({
-                    url: '/admin/campaign/show',
-                    method: 'GET',
-                    success: function(response) {
-                        let campaignDropdown = $('.campaignDropdown');
-                        campaignDropdown.empty();
-                        campaignDropdown.append('<option value="">-- Select a Campaign --</option>');
-
-                        $.each(response, function(index, campaign) {
-                            campaignDropdown.append('<option value="' + campaign.id + '">' +
-                                campaign.campaign_name + '</option>');
-                        });
-
-                        // Refresh the Select2 control
-                        campaignDropdown.trigger('change');
-                    },
-                    error: function(xhr) {
-                        toastr.error('Failed to load campaigns.');
-                    }
-                });
-            }
-
+            // Init
+            loadCampaigns();
         });
-        function getAgent(selectObject) {
-    const campaignId = $('#campaign_id').val();
-    const agentIds = Array.from(selectObject.selectedOptions).map(option => option.value);
-    const agentNames = Array.from(selectObject.selectedOptions).map(option => option.text);
-    const userFieldsContainer = document.getElementById('user-fields');
-
-    // Loop through each selected agent and add the fields
-    agentIds.forEach((agentId, index) => {
-        const agentName = agentNames[index];
-        appendAgentField(userFieldsContainer, agentId, agentName);
-    });
-
-    // Remove fields for unselected agents
-    const selectedAgentIds = new Set(agentIds);
-    const allAgentFields = userFieldsContainer.querySelectorAll('.row');
-    allAgentFields.forEach(row => {
-        const agentId = row.getAttribute('data-user-id');
-        if (!selectedAgentIds.has(agentId)) {
-            userFieldsContainer.removeChild(row);  // Remove the field for this agent
-        }
-    });
-}
-
-function appendAgentField(container, agentId, agentName, priority = "", weightage = "") {
-    let existingField = container.querySelector(`[data-user-id="${agentId}"]`);
-
-    if (!existingField) {
-        const row = document.createElement('div');
-        row.classList.add('row', 'mb-3');
-        row.setAttribute('data-user-id', agentId);
-        row.innerHTML = `
-            <div class="col-md-6">
-                <label for="weightage-${agentId}" class="form-label">Weightage for ${agentName}</label>
-                <input type="number" id="weightage-${agentId}" name="Weightage[${agentId}]"
-                    class="form-control" placeholder="Enter weightage for ${agentName}" value="${weightage}">
-            </div>
-            <div class="col-md-6">
-                <label for="priority-${agentId}" class="form-label">Priority for ${agentName}</label>
-                <select class="form-select" id="priority-${agentId}" name="priority[${agentId}]">
-                    <option selected disabled value="">Please Enter Priority...</option>
-                    ${Array.from({ length: 10 }, (_, i) => `<option value="${i + 1}" ${priority === (i + 1) ? 'selected' : ''}>${i + 1}</option>`).join('')}
-                </select>
-            </div>
-        `;
-        container.appendChild(row);
-    }
-}
-
     </script>
 @endsection

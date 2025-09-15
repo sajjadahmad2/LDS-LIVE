@@ -4,16 +4,18 @@ namespace App\Http\Controllers;
 use App\Jobs\ProcessWebhookData;
 use App\Jobs\ProcessWebhookDataLead; // To handle incoming requests
 use App\Models\Agent;                // Model for Campaign table
-use App\Models\Campaign;             // Model for Agent table
-use App\Models\CampaignAgent;        // Model for Contact table
-use App\Models\Contact;              // Model for User table
-use App\Models\Log as Logs;          // Model for ReserveContact table
-use App\Models\ProccessContact;      // Model for ReserveContact table
-use App\Models\AgentCarrierType;      // Model for Agent Carrier Type table
-use App\Models\ReserveContact;       // Model for the Campaign-Agent mapping
-use App\Models\SaveJobLog;          // For logging
-use App\Models\User;                 // For database queries
-use Carbon\Carbon;                   // For date and time manipulation
+use App\Models\AgentCarrierType;     // Model for Agent table
+use App\Models\AgentLeadType;        // Model for Contact table
+use App\Models\Campaign;
+use App\Models\CampaignAgent;
+                                // Model for User table
+use App\Models\Contact;         // Model for ReserveContact table
+use App\Models\Log as Logs;     // Model for ReserveContact table
+use App\Models\ProccessContact; // Model for Agent Carrier Type table
+use App\Models\ReserveContact;  // Model for the Campaign-Agent mapping
+use App\Models\SaveJobLog;      // For logging
+use App\Models\User;            // For database queries
+use Carbon\Carbon;              // For date and time manipulation
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -35,50 +37,59 @@ class WebhookController extends Controller
     //         'agent_data' => $agent,
     //     ]);
     // }
-public function getAgentConsent(Request $request)
+    public function getAgentConsent(Request $request)
     {
         $validated = $request->validate([
-            'email' => 'required|email',
+            'email'     => 'required|email',
+            'lead_type' => 'required',
         ]);
+        $lead_type  = $validated['lead_type'];
+        $leadTypeId = findLeadTypeId($lead_type);
+
         $proccessContact = ProccessContact::where('email', $validated['email'])->first();
-        if (!$proccessContact) {
+        if (! $proccessContact) {
             return response()->json(['error' => 'Contact with this email is not found'], 404);
         }
         $agent = Agent::where('id', $proccessContact->agent_id ?? '')->first();
-        if (!$agent) {
+        if (! $agent) {
             return response()->json(['error' => 'Agent not found'], 404);
         }
+        $agentData             = AgentLeadType::select('consent', 'npm_number', 'cross_link')->where('agent_id', $agent->id)->where('lead_type', $leadTypeId)->first();
         $formattedCarrierTypes = [];
-        $carrierTypes = AgentCarrierType::select('carrier_type')->where('agent_id', $agent->id)->get();
+        $carrierTypes          = AgentCarrierType::select('carrier_type')->where('agent_id', $agent->id)->where('lead_type', $leadTypeId)->get();
         foreach ($carrierTypes as $type) {
             $formattedCarrierTypes[] = [$type->carrier_type];
         }
-        $agent->carrierType = $formattedCarrierTypes;
+        $agentData->carrierType = $formattedCarrierTypes;
         //dd($agent);
 
         return response()->json([
-            'success' => true,
-            'agent_data' => $agent,
+            'success'    => true,
+            'agent_data' => $agentData,
         ]);
     }
     public function getAgentCarrierTypes(Request $request)
     {
         $validated = $request->validate([
-            'email' => 'required|email',
+            'email'     => 'required|email',
+            'lead_type' => 'required',
+
         ]);
-        $agent = Agent::where('email', $validated['email'])->first();
+        $lead_type  = $validated['lead_type'];
+        $leadTypeId = findLeadTypeId($lead_type);
+        $agent      = Agent::where('email', $validated['email'])->first();
+        if (! $agent) {
+            return response()->json(['error' => 'Agent not found'], 404);
+        }
         $formattedCarrierTypes = [];
-        $carrierTypes = AgentCarrierType::select('carrier_type')->where('agent_id', $agent->id)->get();
+        $carrierTypes          = AgentCarrierType::select('carrier_type')->where('agent_id', $agent->id)->where('lead_type', $leadTypeId)->get();
         foreach ($carrierTypes as $type) {
             $formattedCarrierTypes[] = [$type->carrier_type];
         }
         $agent->carrierType = $formattedCarrierTypes;
-        //dd($agent);
-        if (!$agent) {
-            return response()->json(['error' => 'Agent not found'], 404);
-        }
+
         return response()->json([
-            'success' => true,
+            'success'        => true,
             'agent_carriers' => $formattedCarrierTypes,
         ]);
     }
@@ -90,7 +101,7 @@ public function getAgentConsent(Request $request)
         $contactId      = $data['contact_id'] ?? null;
         $state          = $data['state'] ?? null;
         $campaignId     = base64_decode($campaignIdParam);
-        $requiredFields = ['email', 'state', 'type'];
+        $requiredFields = ['email', 'state', 'type', 'lead_type'];
         $dataKeys       = array_keys($data);
         appendJobLog($contactId, 'Contact came from source ' . ($data['contact_source'] ?? null) . ' having the type ' . ($type ?? null) . ' and the custom Type ' . ($customType ?? null));
         if ($type === 'ContactCreate') {
@@ -114,7 +125,7 @@ public function getAgentConsent(Request $request)
 
             appendJobLog($contactId, 'ContactCreate from Survey Script');
 
-            $this->contactWebhook($request, $campaignId);
+            $this->contactWebhook($request, $campaignId, $data['lead_type'] ?? null);
             return response()->json(['message' => 'Webhook received with exact fields'], 202);
         }
 
@@ -155,8 +166,10 @@ public function getAgentConsent(Request $request)
         return response()->json(['message' => 'Webhook received. Processing in background.'], 202);
     }
 
-    public function ContactWebhook($request, $camid = null)
+    public function ContactWebhook($request, $camid = null, $lead_type = null)
     {
+        $leadTypeId = findLeadTypeId($lead_type);
+
         $data = $request->all();
 
         $contact_id  = $data['contact_id'] ?? null;
@@ -193,6 +206,7 @@ public function getAgentConsent(Request $request)
                 'location'     => isset($data['location']) ? json_encode($data['location']) : null, // Encode as JSON
                 'address'      => $data['location']['fullAddress'] ?? null,
                 'status'       => 'In Compelete',
+                'lead_type'    => $leadTypeId,
                 // 'user_id' => $user->id ?? null,
             ];
 
@@ -202,7 +216,7 @@ public function getAgentConsent(Request $request)
                 // }
                 // $proccessContact->save();
                 // \Log::info("Send this Campaign id to the Find Agent: {$camid}");
-                // $this->findAgent($proccessContact, $camid);
+                //$this->findAgent($proccessContact, $camid, $leadTypeId);
                 // // dd($proccessContact);
                 // \Log::info("Updated contact from Webhook contact ID: {$contact_id}");
             } else {
@@ -212,7 +226,7 @@ public function getAgentConsent(Request $request)
                 }
                 $proccessContact->save();
                 \Log::info("Send this Campaign id to the Find Agent: {$camid}");
-                $this->findAgent($proccessContact, $camid);
+                $this->findAgent($proccessContact, $camid, $leadTypeId);
                 \Log::info("Created new contact from webhook contact Email: {$email}");
             }
             return response()->json(['status' => 'success', 'message' => "webhook receieved and processed"], 200);
@@ -221,7 +235,7 @@ public function getAgentConsent(Request $request)
             return response()->json(['status' => 'error', 'message' => "Webhook type not found: {$type}"], 400);
         }
     }
-    protected function findAgent($proccessContact, $camid = null)
+    protected function findAgent($proccessContact, $camid = null, $leadTypeId)
     {
         $state      = $proccessContact->state;
         $contact_id = $proccessContact->contact_id;
@@ -232,53 +246,68 @@ public function getAgentConsent(Request $request)
             $currentDate  = Carbon::now('America/Chicago')->format('Y-m-d');
             $mainCampaign = Campaign::find($camid);
             $agentIds     = CampaignAgent::where('campaign_id', $camid)->pluck('agent_id')->toArray();
-
             // Fetch agents sorted by priority (asc) and weightage (desc)
-            $agents = Agent::whereHas('states', function ($query) use ($state) {
-                $query->where(DB::raw('TRIM(LOWER(state))'), $state)
-                    ->orWhere(DB::raw('TRIM(LOWER(short_form))'), $state);
-            })
-                ->whereIn('id', $agentIds)
-                ->withCount([
-                    'contacts as monthly_contacts_count' => function ($query) use ($currentMonth) {
-                        $query->where('status', 'Sent')->whereMonth('created_at', $currentMonth);
-                    },
-                    'contacts as daily_contacts_count'   => function ($query) use ($currentDate) {
-                        $query->where('status', 'Sent')->whereDate('created_at', $currentDate);
-                    },
-                    'contacts as total_contacts_count'   => function ($query) {
-                        $query->where('status', 'Sent');
-                    },
-                ])
-                ->orderBy('priority', 'asc')
-                ->orderByDesc('weightage')
+
+            $campaignAgents = CampaignAgent::where('campaign_id', $camid)
+                ->whereHas('agent.states', function ($query) use ($state, $leadTypeId) {
+                    $query->whereHas('state', function ($q) use ($state) {
+                        $q->where(DB::raw('TRIM(LOWER(state))'), strtolower($state))
+                            ->orWhere(DB::raw('TRIM(LOWER(short_form))'), strtolower($state));
+                    })->where('lead_type', $leadTypeId);
+                })
+                ->with(['agent' => function ($query) use ($currentMonth, $currentDate) {
+                    $query->withCount([
+                        'contacts as monthly_contacts_count' => function ($q) use ($currentMonth) {
+                            $q->where('status', 'Sent')->whereMonth('created_at', $currentMonth);
+                        },
+                        'contacts as daily_contacts_count'   => function ($q) use ($currentDate) {
+                            $q->where('status', 'Sent')->whereDate('created_at', $currentDate);
+                        },
+                        'contacts as total_contacts_count'   => function ($q) {
+                            $q->where('status', 'Sent');
+                        },
+                    ]);
+                }, 'agent.agentLeadTypes' => function ($query) use ($leadTypeId) {
+                    $query->where('lead_type', $leadTypeId);
+                }])
+                ->orderBy('priority', 'asc') // campaign-level priority
+                ->orderByDesc('weightage')   // campaign-level weightage
                 ->get();
 
-            $groupedAgents = $agents->groupBy('priority'); // Group agents by priority
-            $agentIdss     = $groupedAgents->map(function ($group) {
-                return $group->pluck('id')->toArray();
+            $groupedAgents = $campaignAgents->groupBy('priority');
+
+            $agentIdss = $groupedAgents->map(function ($group) {
+                return $group->pluck('agent.name')->toArray();
             });
 
             \Log::info('Agent Having the State matched in consent for Contact id: ' . $contact_id . ' : ' . json_encode($agentIdss));
             foreach ($groupedAgents as $priority => $priorityAgents) {
                 $weightageFull = true;
 
-                foreach ($priorityAgents as $agent) {
+                foreach ($priorityAgents as $campaignAgent) {
+
+                    $agent     = $campaignAgent->agent;
+                    $agentData = $agent->agentLeadTypes->first(); // safer than [0]
+
+                    if (! $agentData) {
+                        // No lead type found for this agent, skip
+                        continue;
+                    }
+
                     // Check limits before considering the agent
-                    $total   = $agent->total_contacts_count < $agent->total_limit;
-                    $monthly = $agent->monthly_contacts_count < $agent->monthly_limit;
-                    $daily   = $agent->daily_contacts_count < $agent->daily_limit;
+                    $total   = $agent->total_contacts_count < $agentData->total_limit;
+                    $monthly = $agent->monthly_contacts_count < $agentData->monthly_limit;
+                    $daily   = $agent->daily_contacts_count < $agentData->daily_limit;
 
                     if ($total && $monthly && $daily) {
-
-                        if ($agent->agent_count_weightage < $agent->weightage) {
+                        if ($campaignAgent->agent_count_weightage < $campaignAgent->weightage) {
                             // Assign lead to this agent
                             $proccessContact->agent_id = $agent->id;
                             $proccessContact->save();
                             $weightageFull = false;
                             \Log::info('Agent found. Contact dispatched. Agent ID: ' . ($agent->name ?? ''));
                             appendJobLog($contact_id, 'Agent found. Contact dispatched. Agent ID: ' . ($agent->name ?? ''));
-                            $agent->increment('agent_count_weightage', 1);
+                            $campaignAgent->increment('agent_count_weightage', 1);
                             return; // Exit function after assignment
                         }
                     }
@@ -286,29 +315,46 @@ public function getAgentConsent(Request $request)
 
                 // If all agents in this priority group have reached weightage limit, reset weightage count
                 if ($weightageFull) {
-                    foreach ($priorityAgents as $agent) {
+                    foreach ($priorityAgents as $campaignAgent) {
+
+                        $agent     = $campaignAgent->agent;
+                        $agentData = $agent->agentLeadTypes->first(); // safer than [0]
+
+                        if (! $agentData) {
+                            // No lead type found for this agent, skip
+                            continue;
+                        }
                         // Check limits again before resetting weightage
-                        $total   = $agent->total_contacts_count < $agent->total_limit;
-                        $monthly = $agent->monthly_contacts_count < $agent->monthly_limit;
-                        $daily   = $agent->daily_contacts_count < $agent->daily_limit;
+                        $total   = $agent->total_contacts_count < $agentData->total_limit;
+                        $monthly = $agent->monthly_contacts_count < $agentData->monthly_limit;
+                        $daily   = $agent->daily_contacts_count < $agentData->daily_limit;
 
                         if ($total && $monthly && $daily) {
-                            $agent->update(['agent_count_weightage' => 0]);
+                            $campaignAgent->update(['agent_count_weightage' => 0]);
                         }
                     }
 
                     // Retry assignment after reset
-                    foreach ($priorityAgents as $agent) {
-                        $total   = $agent->total_contacts_count < $agent->total_limit;
-                        $monthly = $agent->monthly_contacts_count < $agent->monthly_limit;
-                        $daily   = $agent->daily_contacts_count < $agent->daily_limit;
+                    foreach ($priorityAgents as $campaignAgent) {
+
+                        $agent     = $campaignAgent->agent;
+                        $agentData = $agent->agentLeadTypes->first(); // safer than [0]
+
+                        if (! $agentData) {
+                            // No lead type found for this agent, skip
+                            continue;
+                        }
+                        $total   = $agent->total_contacts_count < $agentData->total_limit;
+                        $monthly = $agent->monthly_contacts_count < $agentData->monthly_limit;
+                        $daily   = $agent->daily_contacts_count < $agentData->daily_limit;
 
                         if ($total && $monthly && $daily) {
                             $proccessContact->agent_id = $agent->id;
                             $proccessContact->save();
                             \Log::info('Re-attempting assignment after weightage reset. Agent ID: ' . ($agent->name ?? ''));
                             appendJobLog($contact_id, 'Re-attempting assignment after weightage reset. Agent ID: ' . ($agent->name ?? ''));
-                            $agent->increment('agent_count_weightage', 1);
+                            $campaignAgent->increment('agent_count_weightage', 1);
+
                             return; // Exit function after successful assignment
                         }
                     }
@@ -317,7 +363,7 @@ public function getAgentConsent(Request $request)
         }
     }
 
-    protected function ReserveContact($data, $agent = null, $campaign)
+    protected function ReserveContact($data, $agent = null, $campaign, $leadTypeId)
     {
         $type           = $data['customData'];
         $contact_id     = $data['contact_id'];

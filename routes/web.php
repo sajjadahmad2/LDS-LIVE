@@ -136,7 +136,8 @@ Route::middleware('auth')->group(function () {
         Route::get('agent/status/{id?}', [AgentController::class, 'agent'])->name('agent.status');
         Route::get('/compaign/agent/', [AgentController::class, 'agentCompaignSearch'])->name('agent.compaign');
                 Route::get('/get-carrier-types', function (Request $request) {
-            $allTypes = getCarrierType();
+            $leadtype=$request->get('lead_type', 'ACA');
+            $allTypes = getCarrierType($leadtype);
             $search   = strtolower($request->get('q', ''));
 
             // Filter by query if provided

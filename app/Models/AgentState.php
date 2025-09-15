@@ -9,8 +9,8 @@ class AgentState extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['agent_id', 'state_id', 'user_id'];
-
+    protected $guarded = [];
+    protected $table = 'agent_states';
     public function agent()
     {
         return $this->belongsTo(Agent::class);
@@ -18,9 +18,14 @@ class AgentState extends Model
 
     public function state()
     {
-        return $this->belongsTo(State::class);
+        return $this->belongsTo(State::class,'state_id');
     }
 
+
+    public function leadType()
+    {
+        return $this->belongsTo(LeadType::class, 'lead_type');
+    }
     public function user()
     {
         return $this->belongsTo(User::class);

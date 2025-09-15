@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -12,8 +11,8 @@ class Agent extends Model
     protected $fillable = [
         'name', 'email', 'destination_location', 'destination_webhook',
         'consent', 'priority', 'daily_limit',
-        'monthly_limit', 'weightage', 'user_id', 'location_id','total_limit','npm_number',
-        'cross_link','agent_count_weightage'
+        'monthly_limit', 'weightage', 'user_id', 'location_id', 'total_limit', 'npm_number',
+        'cross_link', 'agent_count_weightage',
     ];
 
     public function user()
@@ -23,17 +22,23 @@ class Agent extends Model
 
     public function states()
     {
-        return $this->belongsToMany(State::class, 'agent_states');
+        return $this->hasMany(AgentState::class, 'agent_id');
     }
 
+    public function carrierTypes()
+    {
+        return $this->hasMany(AgentCarrierType::class, 'agent_id');
+    }
+
+    public function agentLeadTypes()
+    {
+        return $this->hasMany(AgentLeadType::class, 'agent_id');
+    }
     public function campaigns()
     {
         return $this->belongsToMany(Campaign::class, 'campaigns_agents');
     }
-    public function carrierTypes()
-    {
-        return $this->hasMany(AgentCarrierType::class);
-    }
+
     public function contacts()
     {
         return $this->hasMany(Contact::class, 'agent_id');

@@ -112,10 +112,8 @@
                             <th>ID</th>
                             <th>Name</th>
                             <th>Email</th>
-                            <th>States</th>
-                            <th>Weightage</th>
-                            {{-- <th>Weightage Count</th> --}}
-                            <th>Priority</th>
+
+
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -198,98 +196,100 @@
                                 <input type="text" id="destination_webhook" name="destination_webhook"
                                     class="form-control" placeholder="Enter Destination Webhook">
                             </div>
-                            <!-- States -->
-                            <div class="col-md-4 mb-3">
-                                <label for="states" class="form-label">States</label>
-                                <select id="states" name="states[]" class="form-select" multiple="multiple"
-                                    style="width: 100%;">
-                                    @foreach ($states as $state)
-                                        <option value="{{ $state->id }}">{{ $state->state }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <!-- Priority -->
-                            <div class="col-md-4 mb-3">
-                                <label for="priority" class="form-label">Priority</label>
-                                <select class="form-select" id="priority" name="priority">
-                                    <option selected disabled value="">Please Enter Priority...</option>
-                                    <option value="1">1</option>
-                                    <option value="2">2</option>
-                                    <option value="3">3</option>
-                                    <option value="4">4</option>
-                                    <option value="5">5</option>
-                                    <option value="6">6</option>
-                                    <option value="7">7</option>
-                                    <option value="8">8</option>
-                                    <option value="9">9</option>
-                                    <option value="10">10</option>
-                                </select>
-
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <!-- Carrier Type -->
-                            <div class="col-md-12 mb-3">
-                                <label for="carrier_type" class="form-label">Carrier Type</label>
-                                <select id="carrier_type" name="carrier_type[]" class="form-select" multiple="multiple"
-                                    style="width: 100%;">
-                                    @foreach (getCarrierType() as $type)
-                                        <option value="{{ $type }}">{{ $type }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
 
                         </div>
-                        <div class="row">
-                            <div class="col-md-4 mb-3">
-                                <label for="daily_limit" class="form-label">Daily Limit</label>
-                                <input type="number" id="daily_limit" name="daily_limit" class="form-control"
-                                    placeholder="Enter Daily Limit">
+                        <!-- Lead Types as Tabs -->
+                        <ul class="nav nav-tabs" id="leadTypeTabs" role="tablist">
+                            @foreach ($leadTypes as $index => $leadType)
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link {{ $index === 0 ? 'active' : '' }}"
+                                        id="tab-{{ $leadType->id }}" data-bs-toggle="tab"
+                                        data-bs-target="#leadtype-{{ $leadType->id }}" type="button" role="tab">
+                                        {{ $leadType->name }}
+                                    </button>
+                                </li>
+                            @endforeach
+                        </ul>
+                        <div class="tab-content mt-3" id="leadTypeTabsContent">
 
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <label for="monthly_limit" class="form-label">Monthly Limit</label>
-                                <input type="number" id="monthly_limit" name="monthly_limit" class="form-control"
-                                    placeholder="Enter Monthly Limit">
-                            </div>
-                            <!-- Total  Limit -->
-                            <div class="col-md-4 mb-3">
-                                <label for="total_limit" class="form-label">Total Limit</label>
-                                <input type="number" id="total_limit" name="total_limit" class="form-control"
-                                    placeholder="Enter Total Limit">
-                            </div>
+                            @foreach ($leadTypes as $index => $leadType)
+                                <div class="tab-pane fade {{ $index === 0 ? 'show active' : '' }}"
+                                    id="leadtype-{{ $leadType->id }}" role="tabpanel">
+
+                                    <input type="hidden" name="lead_types[{{ $leadType->id }}][id]"
+                                        value="{{ $leadType->id }}">
+
+                                    <div class="row">
+
+                                        <!-- States -->
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">States</label>
+                                            <select name="lead_types[{{ $leadType->id }}][states][]"
+                                                class="form-select states-select" multiple>
+                                                @foreach ($states as $state)
+                                                    <option value="{{ $state->id }}">{{ $state->state }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+
+                                        <!-- Carrier Type -->
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Carrier Type</label>
+
+                                            <select name="lead_types[{{ $leadType->id }}][carrier_type][]"
+                                                class="form-select carrier-type-select"
+                                                id="carrier_type_{{ $leadType->id }}"   data-lead-type="{{ $leadType->name }}" multiple>
+
+                                                @foreach (getCarrierType($leadType->name) as $type)
+                                                    <option value="{{ $type }}">{{ $type }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label">Daily Limit</label>
+                                            <input type="number" name="lead_types[{{ $leadType->id }}][daily_limit]"
+                                                class="form-control">
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label">Monthly Limit</label>
+                                            <input type="number" name="lead_types[{{ $leadType->id }}][monthly_limit]"
+                                                class="form-control">
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label">Total Limit</label>
+                                            <input type="number" name="lead_types[{{ $leadType->id }}][total_limit]"
+                                                class="form-control">
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label">NPN Number</label>
+                                            <input type="text" name="lead_types[{{ $leadType->id }}][npm_number]"
+                                                class="form-control">
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label">Cross Link</label>
+                                            <input type="text" name="lead_types[{{ $leadType->id }}][cross_link]"
+                                                class="form-control">
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-12 mb-3">
+                                            <label class="form-label">Consent</label>
+                                            <textarea name="lead_types[{{ $leadType->id }}][consent]" class="form-control" rows="2"></textarea>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            @endforeach
                         </div>
 
-                        <div class="row">
-                            <!-- Daily Limit -->
-                            <div class="col-md-4 mb-3">
-                                <label for="weightage" class="form-label">Weightage</label>
-                                <input type="number" id="weightage" name="weightage" class="form-control"
-                                    placeholder="Enter Weightage">
-
-                            </div>
-                            <!-- npm number-->
-                            <div class="col-md-4 mb-3">
-                                <label for="npm_number" class="form-label"> NPN Number</label>
-                                <input type="text" id="npm_number" name="npm_number" class="form-control"
-                                    placeholder="Enter National Producer Number">
-                            </div>
-                            <!-- cross_link  -->
-                            <div class="col-md-4 mb-3">
-                                <label for="total_limit" class="form-label">Cross Link</label>
-                                <input type="text" id="cross_link" name="cross_link" class="form-control"
-                                    placeholder="Enter Cross Link">
-                            </div>
-                        </div>
-                        <div class="row">
-                            <!-- Consent -->
-                            <div class="col-md-12 mb-3">
-                                <label for="consent" class="form-label">Consent</label>
-                                <textarea id="consent" name="consent" class="form-control" rows="3" placeholder="Enter Consent Details"></textarea>
-                            </div>
-
-                        </div>
                         <div class="row">
                             <div class="col-md-6 ">
                                 <div class="form-check ">
@@ -383,96 +383,108 @@
     @include('admin.select2.scriptload', ['load' => ['datatable']])
     <script type="text/javascript">
         $(document).ready(function() {
-            initializeSelect2();
-            let $select = $('#carrier_type');
-            $select.select2({
-                width: '100%',
-                allowClear: true,
-                placeholder: 'Select Carrier Type',
-                dropdownParent: $("#agentModal"),
-                ajax: {
-                    url: "{{ route('admin.getCarrierTypes') }}",
-                    dataType: 'json',
-                    delay: 100, // You can reduce this
-                    data: function(params) {
-                        return {
-                            q: params.term,
-                            page: params.page || 1
-                        };
-                    },
-                    beforeSend: function() {
-                        $('.loader').show();
-                    },
-                    processResults: function(data, params) {
-                        params.page = params.page || 1;
-                        return {
-                            results: data.results,
-                            pagination: {
-                                more: data.pagination.more
-                            }
-                        };
-                    },
-                    complete: function() {
-                        $('.loader').hide();
-                    },
-                    cache: true
-                }
-            });
+              initializeSelect2();
+            initializeSelect2ForTabs();
 
-            function makeSortable() {
-                let $selection = $('.select2-selection__rendered');
-                $selection.sortable({
-                    containment: "parent",
-                    items: ".select2-selection__choice",
-                    stop: function() {
-                        let sortedValues = [];
-                        $selection.children('.select2-selection__choice').each(function() {
-                            let text = $(this).text().trim();
-                            let value = $select.find("option").filter(function() {
-                                return $(this).text().trim() === text;
-                            }).val();
-                            if (value) {
-                                sortedValues.push(value);
-                            }
-                        });
+            function initializeSelect2ForTabs() {
+                // States, Destination, Agent Access -> static select2
+                $('.states-select, #destination_location, #agentaccess').select2({
+                    tags: true,
+                    width: '100%',
+                    dropdownParent: $("#agentModal"),
+                    allowClear: true,
+                });
 
-                        // Prevent empty selection issue
-                        if (sortedValues.length > 0) {
-                            $select.val(sortedValues).trigger('change.select2');
+                // Carrier type -> AJAX select2 + sortable
+                $('.carrier-type-select').each(function() {
+                    let $select = $(this);
+
+                    $select.select2({
+                        width: '100%',
+                        allowClear: true,
+                        placeholder: 'Select Carrier Type',
+                        dropdownParent: $("#agentModal"),
+                        ajax: {
+                            url: "{{ route('admin.getCarrierTypes') }}",
+                            dataType: 'json',
+                            delay: 100,
+                            data: function(params) {
+                                return {
+                                    q: params.term,
+                                    page: params.page || 1,
+                                    lead_type: $select.data('lead-type')
+                                };
+                            },
+                            beforeSend: function() {
+                                $('.loader').show();
+                            },
+                            processResults: function(data, params) {
+                                params.page = params.page || 1;
+                                return {
+                                    results: data.results,
+                                    pagination: {
+                                        more: data.pagination.more
+                                    }
+                                };
+                            },
+                            complete: function() {
+                                $('.loader').hide();
+                            },
+                            cache: true
                         }
+                    });
+
+                    // Enable sorting inside Select2
+                    function makeSortable() {
+                        let $selection = $select.siblings('.select2').find('.select2-selection__rendered');
+
+                        $selection.sortable({
+                            containment: "parent",
+                            items: ".select2-selection__choice",
+                            stop: function() {
+                                let sortedValues = [];
+                                $selection.children('.select2-selection__choice').each(
+                                    function() {
+                                        let text = $(this).text().trim();
+                                        let value = $select.find("option").filter(
+                                            function() {
+                                                return $(this).text().trim() === text;
+                                            }).val();
+                                        if (value) {
+                                            sortedValues.push(value);
+                                        }
+                                    });
+                                if (sortedValues.length > 0) {
+                                    $select.val(sortedValues).trigger('change.select2');
+                                }
+                            }
+                        }).addClass('sortable-selection');
                     }
-                }).addClass('sortable-selection');
+
+                    $select.on('select2:open', function() {
+                        setTimeout(makeSortable, 100);
+                    });
+                    $select.on('select2:select select2:unselect', function() {
+                        setTimeout(makeSortable, 100);
+                    });
+                    setTimeout(makeSortable, 500);
+                });
             }
 
-            // Apply sorting after Select2 is opened
-            $select.on('select2:open', function() {
-                setTimeout(makeSortable, 100);
-            });
-
-            // Keep sorting enabled after selection changes
-            $select.on('select2:select select2:unselect', function() {
-                setTimeout(makeSortable, 100);
-            });
-
-            // Ensure sorting works on page load
-            setTimeout(makeSortable, 500);
-        });
-        $(document).ready(function() {
-            // Initialize Select2
-            $('#states, #destination_location, #agentaccess').select2({
-                tags: true,
-                width: '100%',
-                dropdownParent: $("#agentModal"),
-                allowClear: true,
-            });
-            // Loader behavior
-            $('#carrier_type, #states, #destination_location, #agentaccess').on('select2:opening', function() {
-                $('.loader').show();
-            }).on('select2:open', function() {
+            // Loader handling
+            $(document).on('select2:opening',
+                '.carrier-type-select, .states-select, #destination_location, #agentaccess',
+                function() {
+                    $('.loader').show();
+                }).on('select2:open', function() {
                 setTimeout(() => {
                     $('.loader').hide();
                 }, 300);
             });
+        });
+
+        $(document).ready(function() {
+
             // Agent Access Hide or Show and clear values when unchecked
             $('#userRoleChecked').change(function() {
                 if ($(this).is(":checked")) {
@@ -509,25 +521,15 @@
                         data: 'email',
                         name: 'email'
                     },
-                    {
-                        data: 'states',
-                        name: 'states',
-                        render: function(data, type, row) {
-                            return `<div class="states-column">${data}</div>`;
-                        }
-                    },
-                    {
-                        data: 'weightage',
-                        name: 'weightage'
-                    },
                     // {
-                    //     data: 'agent_count_weightage',
-                    //     name: 'agent_count_weightage'
+                    //     data: 'states',
+                    //     name: 'states',
+                    //     render: function(data, type, row) {
+                    //         return `<div class="states-column">${data}</div>`;
+                    //     }
                     // },
-                    {
-                        data: 'priority',
-                        name: 'priority'
-                    },
+
+
                     {
                         data: 'action',
                         name: 'action',
@@ -597,7 +599,148 @@
                 $('.text-danger').remove();
                 $('.is-invalid').removeClass('is-invalid');
             });
+            // Populate Form for Edit
+            window.savaAgentData = function(
+                id,
+                name,
+                email,
+                destination_location,
+                destination_webhook,
+                dailyLimits, // array of { daily_limit, lead_type_id }
+                monthlyLimits, // array of { monthly_limit, lead_type_id }
+                totalLimits, // array of { total_limit, lead_type_id }
+                consents, // array of { consent, lead_type_id }
+                carrierTypes, // array of { carrier_type, lead_type_id }
+                states, // array of { state_id, lead_type_id }
+                npmNumbers, // array of { npm_number, lead_type_id }
+                crossLinks, // array of { cross_link, lead_type_id }
+                agentUsers, // array of locationIds
+                userRole // boolean
+            ) {
+                // ===== Basic agent header fields =====
+                $('#agent_id').val(id);
+                $('#name').val(name);
+                $('#email').val(email);
+                $('#destination_location').val(destination_location).trigger('change');
+                $('#destination_webhook').val(destination_webhook);
 
+                // ===== Role / access =====
+                if (userRole === true) {
+                    $('#userRoleChecked').prop('checked', true);
+                    $('#agent_access').fadeIn();
+                    $('#agentaccess').val(agentUsers || []).trigger('change');
+                    $('#agentaccess').prop('required', true);
+                } else {
+                    $('#userRoleChecked').prop('checked', false);
+                    $('#agent_access').fadeOut();
+                    $('#agentaccess').val([]).trigger('change');
+                    $('#agentaccess').prop('required', false);
+                }
+
+                // ===== Group incoming states & carriers by lead_type_id =====
+                const
+                grouped = {}; // { [leadTypeId]: { states: [], carriers: [], limits: {}, consent: '', npm_number:'', cross_link:'' } }
+
+                function ensure(key) {
+                    if (!grouped[key]) grouped[key] = {
+                        states: [],
+                        carriers: [],
+                        daily_limit: '',
+                        monthly_limit: '',
+                        total_limit: '',
+                        consent: '',
+                        npm_number: '',
+                        cross_link: ''
+                    };
+                    return grouped[key];
+                }
+
+                (Array.isArray(states) ? states : []).forEach(s => {
+                    const key = s && s.lead_type_id != null ? s.lead_type_id : 'all';
+                    ensure(key).states.push(String(s.state_id));
+                });
+
+                (Array.isArray(carrierTypes) ? carrierTypes : []).forEach(c => {
+                    const key = c && c.lead_type_id != null ? c.lead_type_id : 'all';
+                    ensure(key).carriers.push(String(c.carrier_type));
+                });
+
+                (Array.isArray(dailyLimits) ? dailyLimits : []).forEach(d => {
+                    const key = d.lead_type_id != null ? d.lead_type_id : 'all';
+                    ensure(key).daily_limit = d.daily_limit || '';
+                });
+
+                (Array.isArray(monthlyLimits) ? monthlyLimits : []).forEach(m => {
+                    const key = m.lead_type_id != null ? m.lead_type_id : 'all';
+                    ensure(key).monthly_limit = m.monthly_limit || '';
+                });
+
+                (Array.isArray(totalLimits) ? totalLimits : []).forEach(t => {
+                    const key = t.lead_type_id != null ? t.lead_type_id : 'all';
+                    ensure(key).total_limit = t.total_limit || '';
+                });
+
+                (Array.isArray(consents) ? consents : []).forEach(c => {
+                    const key = c.lead_type_id != null ? c.lead_type_id : 'all';
+                    ensure(key).consent = c.consent || '';
+                });
+
+                (Array.isArray(npmNumbers) ? npmNumbers : []).forEach(n => {
+                    const key = n.lead_type_id != null ? n.lead_type_id : 'all';
+                    ensure(key).npm_number = n.npm_number || '';
+                });
+
+                (Array.isArray(crossLinks) ? crossLinks : []).forEach(c => {
+                    const key = c.lead_type_id != null ? c.lead_type_id : 'all';
+                    ensure(key).cross_link = c.cross_link || '';
+                });
+
+                // ===== Apply values to each lead-type tab =====
+                $('[id^="leadtype-"]').each(function() {
+                    const tabId = $(this).attr('id'); // e.g., leadtype-3
+                    const leadTypeId = tabId.split('-')[1];
+                    const group = grouped[leadTypeId] || grouped['all'] || {};
+                    console.log(group);
+                    // Select fields
+                    $(this).find(`[name="lead_types[${leadTypeId}][states][]"]`).val(group.states || [])
+                        .trigger('change');
+                    $(this).find(`[name="lead_types[${leadTypeId}][carrier_type][]"]`).val(group
+                        .carriers || []).trigger('change');
+
+                    // Input fields
+                    $(this).find(`[name="lead_types[${leadTypeId}][daily_limit]"]`).val(group
+                        .daily_limit || '');
+                    $(this).find(`[name="lead_types[${leadTypeId}][monthly_limit]"]`).val(group
+                        .monthly_limit || '');
+                    $(this).find(`[name="lead_types[${leadTypeId}][total_limit]"]`).val(group
+                        .total_limit || '');
+                    $(this).find(`[name="lead_types[${leadTypeId}][consent]"]`).val(group.consent ||
+                    '');
+                    $(this).find(`[name="lead_types[${leadTypeId}][npm_number]"]`).val(group
+                        .npm_number || '');
+                    $(this).find(`[name="lead_types[${leadTypeId}][cross_link]"]`).val(group
+                        .cross_link || '');
+                });
+            };
+
+
+            window.deleteAgent = function(agentId) {
+                if (confirm("Are you sure you want to delete this agent?")) {
+                    $.ajax({
+                        url: "{{ route('admin.agents.destroy', ':id') }}".replace(':id', agentId),
+                        type: 'DELETE',
+                        data: {
+                            "_token": "{{ csrf_token() }}"
+                        },
+                        success: function(response) {
+                            table.ajax.reload();
+                        },
+                        error: function(xhr) {
+                            console.error(xhr.responseJSON.message);
+                        },
+                    });
+                }
+            };
 
             $('body').on('click', '.status_changes', function(e) {
                 e.preventDefault();
@@ -628,81 +771,6 @@
                     });
                 }
             });
-
-            // Populate Form for Edit
-            window.savaAgentData = function(id, name, email, destination_location, destination_webhook, priority,
-                daily_limit, monthly_limit, total_limit, consent, carrier_type, states, agentUser, npm_number,
-                weightage, cross_link, userRole) {
-                $('#agent_id').val(id);
-                $('#name').val(name);
-                $('#email').val(email);
-                $('#destination_location').val(destination_location);
-                $('#destination_webhook').val(destination_webhook);
-                $('#priority').val(priority);
-                $('#daily_limit').val(daily_limit);
-                $('#monthly_limit').val(monthly_limit);
-                $('#total_limit').val(total_limit);
-                let formattedConsent = consent.replace(/\\r\\n/g, '\n').replace(/\\n/g, '\n').replace(/"/g,
-                    ' ');
-                console.log(formattedConsent);
-                $('#consent').val(formattedConsent);
-                // Populate the consent field
-                $('#npm_number').val(npm_number);
-                $('#weightage').val(weightage);
-                $('#cross_link').val(cross_link);
-                // Populate Carrier Type
-                if (carrier_type && carrier_type.length) {
-                    $('#carrier_type').val(carrier_type).trigger('change');
-                } else {
-                    $('#carrier_type').val([]).trigger('change');
-                }
-                if (destination_location && destination_location.length) {
-                    $('#destination_location').val(destination_location).trigger('change');
-                } else {
-                    $('#destination_location').val([]).trigger('change');
-                }
-
-                // Populate States
-                if (states && states.length) {
-                    $('#states').val(states).trigger('change');
-                } else {
-                    $('#states').val([]).trigger('change');
-                }
-
-                if (userRole === true) {
-                    $('#userRoleChecked').prop('checked', true);
-                    $('#agent_access').fadeIn();
-                    $('#agentaccess').prop('required', true);
-                } else {
-                    $('#userRoleChecked').prop('checked', false);
-                    $('#agent_access').fadeOut();
-                    $('#agentaccess').val(null).trigger('change');
-                    $('#agentaccess').prop('required', false);
-                }
-
-                if (agentUser && agentUser.length) {
-                    $('#agentaccess').val(agentUser).trigger('change');
-                } else {
-                    $('#agentaccess').val([]).trigger('change');
-                }
-            };
-            window.deleteAgent = function(agentId) {
-                if (confirm("Are you sure you want to delete this agent?")) {
-                    $.ajax({
-                        url: "{{ route('admin.agents.destroy', ':id') }}".replace(':id', agentId),
-                        type: 'DELETE',
-                        data: {
-                            "_token": "{{ csrf_token() }}"
-                        },
-                        success: function(response) {
-                            table.ajax.reload();
-                        },
-                        error: function(xhr) {
-                            console.error(xhr.responseJSON.message);
-                        },
-                    });
-                }
-            };
             $("form#agentUser").submit(function(event) {
                 event.preventDefault(); // Prevent default form submission
 

@@ -3,6 +3,7 @@ namespace App\Jobs;
 
 use App\Models\Agent;
 use App\Models\Campaign;
+use App\Models\CampaignAgent;
 use App\Models\Contact;
 use App\Models\CustomField;
 use App\Models\GhlAuth;
@@ -17,6 +18,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ProcessWebhookData implements ShouldQueue
 {
@@ -38,280 +40,229 @@ class ProcessWebhookData implements ShouldQueue
      */
     public function handle()
     {
-        $webhookdata = $this->webhookdata;
-        $campaign_id = $this->campaign_id;
-        $contact_id  = $webhookdata['contact_id'] ?? null;
-        $email       = $webhookdata['email'] ?? null;
-        $state       = $webhookdata['state'] ?? null;
-        // Fetch campaign and agent details
+        $webhookdata  = $this->webhookdata;
+        $location_id  = $webhookdata['location']['id'] ?? null;
+        $campaign_id  = $this->campaign_id;
+        $contact_id   = $webhookdata['contact_id'] ?? null;
         $mainCampaign = Campaign::find($campaign_id);
-        $agentIds     = Agent::whereHas('states', function ($query) use ($state) {
-            $query->where(DB::raw('TRIM(LOWER(state))'), strtolower(trim($state)))
-                ->orWhere(DB::raw('TRIM(LOWER(short_form))'), strtolower(trim($state)));
-        })
-            ->whereIn('id', function ($q) use ($campaign_id) {
-                $q->select('agent_id')
-                    ->from('campaign_agents')
-                    ->where('campaign_id', $campaign_id);
-            })
-            ->pluck('id')
-            ->toArray();
-
-        if (! $this->validateInitialConditions($webhookdata, $contact_id, $mainCampaign, $agentIds)) {
-            return;
-        }
-
-        // Check for duplicates
-        $duplicateContact = $this->checkForDuplicateContact($email, $contact_id);
-        if ($duplicateContact) {
-            // If duplicate found, assign to another agent
-            $this->assignLeadToAnotherAgent($duplicateContact, $email, $contact_id, $mainCampaign, $agentIds,$webhookdata);
-            return; // Stop further processing as duplicate has been handled
-        }
-
-        // Proceed with normal contact assignment if no duplicate is found
-        $proccessContact = $this->getProccessContact($email, $contact_id);
-        $this->assignLeadToAgent($proccessContact, $email, $contact_id, $mainCampaign, $agentIds, $webhookdata);
-    }
-
-    /**
-     * Validate initial conditions such as missing data or agent/campaign info.
-     */
-    private function validateInitialConditions($webhookdata, $contact_id, $mainCampaign, $agentIds)
-    {
-        if (count($agentIds) === 0 || empty($mainCampaign) || (! isset($webhookdata['state']) && (! isset($contact_id) || is_null($contact_id)))) {
-            appendJobLog($contact_id, 'Missing agent, campaign or state, contact sent to reserve.');
-            $this->ReserveContact($webhookdata, null, $mainCampaign, 'Missing agent, campaign, or state.');
-            return false;
-        }
-        return true;
-    }
-
-    /**
-     * Check if the contact is duplicated by looking at email or contact_id with SENT status.
-     */
-    private function checkForDuplicateContact($email, $contact_id)
-    {
-        return Contact::where(function ($query) use ($email, $contact_id) {
-            if ($email) {
-                $query->where('email', $email);
+        $agentIds     = CampaignAgent::where('campaign_id', $campaign_id)->pluck('agent_id')->toArray();
+        if (count($agentIds) === 0 || empty($mainCampaign) || (! isset($webhookdata['state']) && (! isset($webhookdata['contact_id']) || is_null($contact_id)))) {
+            if (! is_null($contact_id)) {
+                // Log::info(match (true) {
+                //     count($agentIds) === 0        => 'No Agent Found or Limit Reached, Sent to Reserve',
+                //     empty($mainCampaign)          => 'Campaign Not Provided, Sent to Reserve',
+                //     ! isset($webhookdata['state']) => 'State Not Provided, Sent to Reserve',
+                // });
+                appendJobLog($contact_id, 'Contact send to the Reserve due to Campaign or stae is not provided');
+                $this->ReserveContact($webhookdata, null, $mainCampaign, 'Contact send to the Reserve due to Campaign or state is not provided');
             }
-            if ($contact_id) {
-                $query->orWhere('contact_id', $contact_id);
+            return match (true) {
+                count($agentIds) === 0 => null,
+                empty($mainCampaign)          => response()->json(['error' => 'Campaign not found'], 404),
+                ! isset($webhookdata['state']) => response()->json(['error' => 'State not provided'], 400),
+            };
+        }
+        $state      = strtolower(trim($webhookdata['state'] ?? null));
+        $sourceUser = User::where('location_id', $location_id)->first();
+
+        if (! $sourceUser) {
+            $sourceUser = User::where('location_id', 'Xi9xlFZVPhtek5GOUwrS')->first();
+
+        }
+        // \Log::info(["Contact Origniated From That Source having id" => $sourceUser->id ?? null]);
+        $sourceUserId = $sourceUser->id;
+        $currentMonth = Carbon::now('America/Chicago')->month;
+        $currentDate  = Carbon::now('America/Chicago')->format('Y-m-d');
+        // first check the contact if exist in the process Contact or not with agent
+        $email = $webhookdata['email'] ?? null;
+
+        $searchContactByEmail = Contact::where(function ($query) use ($email, $contact_id) {
+            if ($email) {
+                $query->where('email', $email)
+                    ->orWhere('contact_id', $contact_id);
+            } else {
+                $query->where('contact_id', $contact_id);
             }
         })
             ->where('status', 'SENT')
             ->first();
+        if ($searchContactByEmail) {
+            \Log::info("Contact Duplication Alert Please check the email : {$email}");
+            appendJobLog(
+                $contact_id,
+                'Contact sent to reserve — it already exists in the contact table and was sent to agent: ' .
+                ($searchContactByEmail->agent?->name ?? ($searchContactByEmail->agent_id ?: 'Null'))
+            );
 
-    }
-
-    /**
-     * Get the ProccessContact or handle assigning a new one.
-     */
-    private function getProccessContact($email, $contact_id)
-    {
-        return ProccessContact::where(function ($query) use ($email, $contact_id) {
+            $this->ReserveContact($webhookdata, null, $mainCampaign, 'Contact sent to reserve it already exist in the contact table and sent to the agent id : ' . ($searchContactByEmail->agent?->name ?? ($searchContactByEmail->agent_id ?: 'Null')));
+            return;
+        }
+        $proccessContact = ProccessContact::where(function ($query) use ($email, $contact_id) {
             if ($email) {
-                $query->where('email', $email);
-            }
-            if ($contact_id) {
-                $query->orWhere('contact_id', $contact_id);
+                $query->where('email', $email)
+                    ->orWhere('contact_id', $contact_id);
+            } else {
+                $query->where('contact_id', $contact_id);
             }
         })
-            ->whereNull('agent_id')
+            ->whereNotNull('agent_id')
             ->first();
+
+        if (! $proccessContact) {
+            // \Log::info('No Contact Found, Find the Best Agent again for contact id  ' . $contact_id);
+            appendJobLog($contact_id, 'No Contact Found in Process table, Find the Best Agent again for contact id  ' . $contact_id);
+            //Agents Where state and the campaighn matches
+            $agents = Agent::whereHas('states', function ($query) use ($state) {
+                $query->where(DB::raw('TRIM(LOWER(state))'), $state)
+                    ->orWhere(DB::raw('TRIM(LOWER(short_form))'), $state);
+            })
+                ->whereIn('id', $agentIds)
+                ->withCount([
+                    'contacts as monthly_contacts_count' => function ($query) use ($currentMonth) {
+                        $query->where('status', 'Sent')->whereMonth('created_at', $currentMonth);
+                    },
+                    'contacts as daily_contacts_count'   => function ($query) use ($currentDate) {
+                        $query->where('status', 'Sent')->whereDate('created_at', $currentDate);
+                    },
+                    'contacts as total_contacts_count'   => function ($query) {
+                        $query->where('status', 'Sent');
+                    },
+                ])
+                ->orderBy('priority', 'asc') // Sort by highest priority (lowest value)
+                ->orderByDesc('weightage')   // Within priority, sort by highest weightage
+                ->get();
+
+            if ($agents->isEmpty()) {
+                if (! is_null($contact_id)) {
+                    // Log::info('No Agent Found or Limit Reached, Sent to Reserve');
+                    appendJobLog($contact_id, 'No Agent Found or Limit Reached, Sent to Reserve ' . $contact_id);
+                    $this->ReserveContact($webhookdata, null, $mainCampaign, 'No Agent Found or Limit Reached, Sent to Reserve ');
+
+                }
+                return;
+            }
+
+            // Group agents by priority
+            $groupedAgents = $agents->groupBy('priority');
+            $agentIdss     = $groupedAgents->map(function ($group) {
+                return $group->pluck('id')->toArray();
+            });
+
+            // \Log::info('State Agents After Submission of Contact ID'.$contact_id.': ' . json_encode($agentIdss));
+            $dailyLimitReached = false;
+
+            foreach ($groupedAgents as $priority => $priorityAgents) {
+                $weightageFull = true; // Assume weightage is full for this priority group
+
+                foreach ($priorityAgents as $agent) {
+                    // Check if agent is within their limits
+                    $total   = $agent->total_contacts_count < $agent->total_limit;
+                    $monthly = $agent->monthly_contacts_count < $agent->monthly_limit;
+                    $daily   = $agent->daily_contacts_count < $agent->daily_limit;
+
+                    if ($total && $monthly && $daily) {
+                        if ($agent->agent_count_weightage < $agent->weightage) {
+                            // Assign lead and increment weightage
+                            // Log::info('Agent found. Contact dispatched. Agent ID: ' . ($agent->name ?? ''));
+                            appendJobLog($contact_id, 'Contact dispatched. Agent ID: ' . ($agent->name ?? ''));
+                            $this->ProccessContact($webhookdata, $agent, $mainCampaign);
+                            $agent->increment('agent_count_weightage', 1);
+                            $weightageFull = false;
+                            return; // Exit after assigning one lead
+                        }
+                    }
+                }
+
+                // If all agents in this priority level have full weightage, reset and retry
+                if ($weightageFull) {
+                    foreach ($priorityAgents as $agent) {
+                        // Check limits again before resetting weightage
+                        $total   = $agent->total_contacts_count < $agent->total_limit;
+                        $monthly = $agent->monthly_contacts_count < $agent->monthly_limit;
+                        $daily   = $agent->daily_contacts_count < $agent->daily_limit;
+
+                        if ($total && $monthly && $daily) {
+                            $agent->update(['agent_count_weightage' => 0]);
+                        }
+                    }
+
+                    // Retry with the same priority level after weightage reset
+                    foreach ($priorityAgents as $agent) {
+                        $total   = $agent->total_contacts_count < $agent->total_limit;
+                        $monthly = $agent->monthly_contacts_count < $agent->monthly_limit;
+                        $daily   = $agent->daily_contacts_count < $agent->daily_limit;
+
+                        if ($total && $monthly && $daily) {
+                            // Log::info('Weightage reset. Assigning contact to agent ID: ' . ($agent->name ?? ''));
+                            appendJobLog($contact_id, 'Weightage reset. Assigning contact to agent ID: ' . ($agent->name ?? ''));
+                            $this->ProccessContact($webhookdata, $agent, $mainCampaign);
+                            $agent->increment('agent_count_weightage', 1);
+                            return;
+                        }
+                    }
+                }
+            }
+
+            // If all agents in all priority levels are full, send to reserve
+            // Log::info('All Agents weightage is full and limits reached. Sending to reserve.');
+            appendJobLog($contact_id, 'All Agents weightage is full and limits reached. Sending to reserve ' . $contact_id);
+            $this->ReserveContact($webhookdata, null, $mainCampaign, 'All Agents weightage is full and limits reached. Sending to reserve');
+
+        } else {
+            // Process contact and assign it to the agent
+            $selectedAgent = Agent::where('id', $proccessContact->agent_id)->first();
+            // \Log::info('Agent found Contact is dispatched to the process JOB Agent ID: ' . $selectedAgent->name ?? '');
+            appendJobLog($contact_id, 'Contact dispatched to the process JOB Agent ID: ' . $selectedAgent->name ?? '');
+            $this->ProccessContact($webhookdata, $selectedAgent, $mainCampaign);
+        }
+
     }
 
-    /**
-     * Assign lead to another agent if a duplicate contact is found.
-     */
-    private function assignLeadToAnotherAgent($duplicateContact, $email, $contact_id, $mainCampaign, $agentIds, $webhookdata)
+    protected function ProccessContact($webhookdata, $agent, $campaign)
     {
-        // Get the agent ID who was originally assigned to this contact
-        $originalAgentId = $duplicateContact->agent_id;
-        $currentMonth = Carbon::now('America/Chicago')->month;
-        $currentDate  = Carbon::now('America/Chicago')->format('Y-m-d');
-        // Fetch all eligible agents excluding the original one
-        $agents = Agent::whereIn('id', $agentIds)
-            ->where('id', '!=', $originalAgentId)
-            ->withCount([
-                'contacts as monthly_contacts_count' => function ($query) use ($currentMonth) {
-                    $query->where('status', 'Sent')->whereMonth('created_at', $currentMonth);
-                },
-                'contacts as daily_contacts_count'   => function ($query) use ($currentDate) {
-                    $query->where('status', 'Sent')->whereDate('created_at', $currentDate);
-                },
-                'contacts as total_contacts_count'   => function ($query) {
-                    $query->where('status', 'Sent');
-                },
-            ])
-            ->orderBy('priority', 'asc') // Sort by highest priority (lowest value)
-            ->orderByDesc('weightage')   // Exclude the original agent
-            ->get();
+        $contact_id   = $webhookdata['contact_id'] ?? null;
+        $my_signature = json_encode($webhookdata['I have reviewed my application information above, and here is my signature.'] ?? null);
 
-        if ($agents->isEmpty()) {
-            appendJobLog($contact_id, 'No available agents other than the original one. Sent to reserve.');
-            $this->ReserveContact($webhookdata, null, $mainCampaign, 'No available agents for that state other than the original one.');
+        if (! $contact_id) {
+            Log::error('Missing contact ID in data.');
             return;
         }
 
-        // Assign the lead to the first available agent
-        $this->assignLeadToBestAgent($agents, $contact_id, $email, $webhookdata, $mainCampaign);
-    }
-
-    /**
-     * Assign lead to the best available agent based on their limits.
-     */
-    private function assignLeadToBestAgent($agents, $contact_id, $email, $webhookdata, $mainCampaign)
-    {
-        $agents            = $agents->groupBy('priority');
-        $dailyLimitReached = false;
-        foreach ($agents as $priority => $priorityAgents) {
-            $agent=$this->isAgentAvailable($priority, $priorityAgents);
-            if ($agent) {
-                appendJobLog($contact_id, 'Lead assigned to new agent: ' . ($agent->name ?? 'Unknown'));
-                $this->ProccessContact($webhookdata, $agent, $mainCampaign);
-                return;
-            }
-        }
-
-        appendJobLog($contact_id, 'All agents are at full capacity. Sent to reserve.');
-        $this->ReserveContact($webhookdata, null, $mainCampaign, 'All agents full, lead sent to reserve.');
-    }
-
-    /**
-     * Check if the agent is within their contact limits.
-     */
-    private function isAgentAvailable($priority, $priorityAgents)
-    {
-        $weightageFull = true; // Assume weightage is full for this priority group
-
-        foreach ($priorityAgents as $agent) {
-            // Check if agent is within their limits
-            $total   = $agent->total_contacts_count < $agent->total_limit;
-            $monthly = $agent->monthly_contacts_count < $agent->monthly_limit;
-            $daily   = $agent->daily_contacts_count < $agent->daily_limit;
-
-            if ($total && $monthly && $daily) {
-                if ($agent->agent_count_weightage < $agent->weightage) {
-                    $weightageFull = false;
-                    return $agent; // Exit after assigning one lead
-                }
-            }
-        }
-
-        // If all agents in this priority level have full weightage, reset and retry
-        if ($weightageFull) {
-            foreach ($priorityAgents as $agent) {
-                // Check limits again before resetting weightage
-                $total   = $agent->total_contacts_count < $agent->total_limit;
-                $monthly = $agent->monthly_contacts_count < $agent->monthly_limit;
-                $daily   = $agent->daily_contacts_count < $agent->daily_limit;
-
-                if ($total && $monthly && $daily) {
-                    $agent->update(['agent_count_weightage' => 0]);
-                }
-            }
-
-            // Retry with the same priority level after weightage reset
-            foreach ($priorityAgents as $agent) {
-                $total   = $agent->total_contacts_count < $agent->total_limit;
-                $monthly = $agent->monthly_contacts_count < $agent->monthly_limit;
-                $daily   = $agent->daily_contacts_count < $agent->daily_limit;
-
-                if ($total && $monthly && $daily) {
-                    // Log::info('Weightage reset. Assigning contact to agent ID: ' . ($agent->name ?? ''));
-                    $agent->increment('agent_count_weightage', 1);
-                    return $agent;
-
-                }
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Assign lead to an agent if no duplicate is found.
-     */
-    private function assignLeadToAgent($proccessContact, $email, $contact_id, $mainCampaign, $agentIds, $webhookdata)
-    {
-        if (! $proccessContact) {
-            appendJobLog($contact_id, 'No contact found in ProccessContact table. Finding the best agent.');
-            $agents = $this->getEligibleAgents($agentIds);
-            if ($agents->isEmpty()) {
-                appendJobLog($contact_id, 'No eligible agents found. Sent to reserve.');
-                $this->ReserveContact($webhookdata, null, $mainCampaign, 'No eligible agents found.');
-                return;
-            }
-
-            $this->assignLeadToBestAgent($agents, $contact_id, $email, $webhookdata, $mainCampaign);
-        } else {
-            // If the contact is found, assign it to the agent
-            if($proccessContact->agent_id ){
-                $agent=Agent::where('id',$proccessContact->agent_id)->first();
-                appendJobLog($contact_id, 'Lead assigned to existing agent: ' . ($agent->name ?? 'Unknown'));
-            }
-            $this->ProccessContact($webhookdata, $agent, $mainCampaign);
-        }
-    }
-
-    /**
-     * Get eligible agents based on limits.
-     */
-    private function getEligibleAgents($agentIds)
-    {
-        $currentMonth = Carbon::now('America/Chicago')->month;
-        $currentDate  = Carbon::now('America/Chicago')->format('Y-m-d');
-
-        return Agent::whereIn('id', $agentIds)
-            ->withCount([
-                'contacts as monthly_contacts_count' => function ($query) use ($currentMonth) {
-                    $query->where('status', 'Sent')->whereMonth('created_at', $currentMonth);
-                },
-                'contacts as daily_contacts_count'   => function ($query) use ($currentDate) {
-                    $query->where('status', 'Sent')->whereDate('created_at', $currentDate);
-                },
-                'contacts as total_contacts_count'   => function ($query) {
-                    $query->where('status', 'Sent');
-                },
-            ])
-            ->orderBy('priority', 'asc')
-            ->orderByDesc('weightage')
-            ->get();
-    }
-
-    /**
-     * Process the contact and assign it to the agent.
-     */
-    protected function ProccessContact($webhookdata, $agent, $campaign)
-    {
-        $contact_id      = $webhookdata['contact_id'] ?? null;
-        $my_signature    = json_encode($webhookdata['I have reviewed my application information above, and here is my signature.'] ?? null);
-        $proccessContact = ProccessContact::where('contact_id', $contact_id)->first();
+        $proccessContact = ProccessContact::where('email', $webhookdata['email'])->first();
         $contactData     = CreateContactData($webhookdata, $agent, $campaign, false);
-        if (! $proccessContact) {
+        if ($proccessContact) {
+            foreach ($contactData as $key => $value) {
+                $proccessContact->$key = $value;
+            }
+            $proccessContact->save();
+            // \Log::info("Updated  old Contact in Process Contact Table with contact ID: {$contact_id} and state is : {$proccessContact->state} With status NOT SENT");
+            appendJobLog($contact_id, "Updated  old Contact in Process Contact Table with contact ID: {$contact_id} and state is : {$proccessContact->state} With status NOT SENT");
+            $this->ContactProcess($proccessContact, $agent, $campaign);
+        } else {
             $proccessContact = new ProccessContact();
+            foreach ($contactData as $key => $value) {
+                $proccessContact->$key = $value;
+            }
+            $proccessContact->save();
+            // \Log::info("Created new Contact in Process Contact Table with contact ID: {$contact_id} and state is : {$proccessContact->state} With status NOT SENT");
+            appendJobLog($contact_id, "Created new Contact in Process Contact Table with contact ID: {$contact_id} and state is : {$proccessContact->state} With status NOT SENT");
+            $this->ContactProcess($proccessContact, $agent, $campaign);
+
         }
-        foreach ($contactData as $key => $value) {
-            $proccessContact->$key = $value;
-        }
-        $proccessContact->save();
-        appendJobLog($contact_id, "Updated  Contact in Process Contact Table with contact ID: {$contact_id} and state is : {$proccessContact->state} With status NOT SENT");
-        appendJobLog($contact_id, "Contact processed for agent ID: " . ($agent->name ?? 'Unknown'));
-        $this->ContactProcess($proccessContact, $agent, $campaign);
     }
 
-    /**
-     * Finalize the contact process and send it to GHL.
-     */
     protected function ContactProcess($dbContact, $agent, $campaign)
     {
-        $my_signature = json_encode($this->data['I have reviewed my application information above, and here is my signature.'] ?? null);
         $contact_id   = $dbContact['contact_id'] ?? null;
-        $contactData  = createContactData($dbContact, $agent, $campaign, true, true);
-        $contact      = Contact::where(function ($query) use ($contact_id, $dbContact) {
-            $query->where('status', 'NOT SENT');
+        $dbContact    = $dbContact ?? [];
+        $my_signature = json_encode($this->data['I have reviewed my application information above, and here is my signature.'] ?? null);
+
+        if (! $contact_id) {
+            Log::error('Missing contact ID in data.');
+            return;
+        }
+        // Attempt to find an existing contact based on contact_id, email, or phone
+        $contact = Contact::where(function ($query) use ($contact_id, $dbContact) {
             if (! empty($dbContact['email'])) {
                 $query->orWhere('email', $dbContact['email']);
             }
@@ -321,24 +272,58 @@ class ProcessWebhookData implements ShouldQueue
             }
 
             // Uncomment if you want to include contact_id in the search
-            if (! empty($contact_id)) {
-                $query->orWhere('contact_id', $contact_id);
-            }
+            // if (!empty($contact_id)) {
+            //     $query->orWhere('contact_id', $contact_id);
+            // }
         })->first();
-        if (! $contact) {
+
+        // Prepare contact data
+        $contactData = createContactData($dbContact, $agent, $campaign, true, true);
+
+        if ($contact) {
+            foreach ($contactData as $key => $value) {
+                $contact->$key = $value;
+            }
+            $contact->save();
+            // \Log::info("Updated old in contact table with contact ID: {$contact_id} and state is : {$contact->state} With status NOT SENT ");
+            appendJobLog($contact_id, "Updated old in contact table with contact ID: {$contact_id} and state is : {$contact->state} With status NOT SENT ");
+
+        } else {
             $contact = new Contact();
+            foreach ($contactData as $key => $value) {
+                $contact->$key = $value;
+            }
+            $contact->save();
+            // \Log::info("Created new Contact in contact table  with contact ID: {$contact_id} and state is : {$contact->state} With status NOT SENT ");
+            appendJobLog($contact_id, "Created new Contact in contact table  with contact ID: {$contact_id} and state is : {$contact->state} With status NOT SENT ");
+
+            //$this->SendGhl($contact, $agent, $campaign);
+
         }
-        foreach ($contactData as $key => $value) {
-            $contact->$key = $value;
+        $findContact = Contact::where('status', 'NOT SENT')
+            ->where(function ($query) use ($contact_id, $dbContact) {
+                if (! empty($dbContact['email'])) {
+                    $query->orWhere('email', $dbContact['email']);
+                }
+                if (! empty($dbContact['phone'])) {
+                    $query->orWhere('phone', $dbContact['phone']);
+                }
+                // Uncomment if needed
+                // if (!empty($contact_id)) {
+                //     $query->orWhere('contact_id', $contact_id);
+                // }
+            })
+            ->first();
+        if ($findContact) {
+            // \Log::info("Updated old in contact table with contact ID: {$contact_id} and state is : {$findContact->state} With status{$findContact->status} Forward to GHL");
+            appendJobLog($contact_id, "Updated old in contact table with contact ID: {$contact_id} and state is : {$findContact->state} With status{$findContact->status} Forward to GHL");
+            $this->SendGhl($findContact, $agent, $campaign);
+        } else {
+            // \Log::info(" Contact in contact table  with contact ID: {$contact_id} With status  SENT not forward to GHL ");
+            appendJobLog($contact_id, " Contact in contact table  with contact ID: {$contact_id} With status  SENT and sent to that agent : {$findContact->agent_id} not forward to GHL ");
         }
-        $contact->save();
-        appendJobLog($contact->contact_id, "Contact updated and forwarded to GHL.");
-        $this->SendGhl($contact, $agent, $campaign);
     }
 
-    /**
-     * Send contact data to GHL.
-     */
     protected function SendGhl($contact, $agent, $campaign)
     {
         $customData = $contact->contact_json;
@@ -407,6 +392,7 @@ class ProcessWebhookData implements ShouldQueue
                     foreach ($contactData as $key => $value) {
                         $reserveContact->$key = $value;
                     }
+                    $reserveContact->reason = 'Contact Not submitted or Sent Due to this reason ' . json_encode($response);
                     $reserveContact->status = 'Not Sent';
                     $reserveContact->save();
                     \Log::info("Updated ReserveContact  After Try with contact ID: {$contactId}");
@@ -415,6 +401,7 @@ class ProcessWebhookData implements ShouldQueue
                     foreach ($contactData as $key => $value) {
                         $reserveContact->$key = $value;
                     }
+                    $reserveContact->reason = 'Contact Not submitted or Sent Due to this reason ' . json_encode($response);
                     $reserveContact->status = 'Not Sent';
                     $reserveContact->save();
                     \Log::info("Created new ReserverContact After Try  with contact ID: {$contactId}");
@@ -621,10 +608,6 @@ class ProcessWebhookData implements ShouldQueue
             return $ghl;
         }
     }
-
-    /**
-     * Reserve contact for further processing if no agent is available.
-     */
     protected function ReserveContact($data, $agent = null, $campaign, $reason = null)
     {
         $type           = $data['customData'];
@@ -652,3 +635,82 @@ class ProcessWebhookData implements ShouldQueue
         }
     }
 }
+// $agents = Agent::whereHas('states', function ($query) use ($state) {
+//     $query->where(DB::raw('TRIM(LOWER(state))'), $state)
+//           ->orWhere(DB::raw('TRIM(LOWER(short_form))'), $state);
+// })
+// ->whereIn('id', $agentIds)
+// ->withCount([
+//     'contacts as monthly_contacts_count' => function ($query) use ($currentMonth) {
+//         $query->where('status', 'Sent')->whereMonth('created_at', $currentMonth);
+//     },
+//     'contacts as daily_contacts_count' => function ($query) use ($currentDate) {
+//         $query->where('status', 'Sent')->whereDate('created_at', $currentDate);
+//     },
+//     'contacts as total_contacts_count' => function ($query) {
+//         $query->where('status', 'Sent');
+//     },
+// ])
+// ->orderBy('priority', 'asc') // Sort by priority first (smallest value = highest priority)
+// ->orderByDesc('weightage')    // If same priority, sort by highest weightage
+// ->get();
+
+// if ($agents->isEmpty()) {
+// if (!is_null($contact_id)) {
+//     Log::info('No Agent Found or Limit Reached, Sent to Reserve');
+//     $this->ReserveContact($webhookdata, null, $mainCampaign);
+// }
+// return;
+// }
+
+// $filteredAgents = [];
+// $weightagefull = true;
+
+// foreach ($agents as $agent) {
+// $total = $agent->total_contacts_count < $agent->total_limit;
+// $monthly = $agent->monthly_contacts_count < $agent->monthly_limit;
+// $daily = $agent->daily_contacts_count < $agent->daily_limit;
+
+// if ($total && $monthly && $daily) {
+//     $filteredAgents[] = $agent;
+
+//     if ($agent->agent_count_weightage < $agent->weightage) {
+//         Log::info('Agent found. Contact dispatched. Agent ID: ' . ($agent->name ?? ''));
+//         $this->ProccessContact($webhookdata, $agent, $mainCampaign);
+//         $agent->increment('agent_count_weightage', 1); // Increment weightage count
+//         $weightagefull = false;
+//         break;
+//     }
+// }
+// }
+
+// // Step 4: If all agents have hit their weightage limit, reset and select the best one
+// if ($weightagefull && count($filteredAgents) > 0) {
+// $agentsCollection = collect($filteredAgents);
+
+// // Reset agent_count_weightage for all filtered agents
+// $agentsCollection->each(function ($agent) {
+//     $agent->update(['agent_count_weightage' => 0]);
+// });
+
+// // Find the highest priority (smallest priority number)
+// $minPriority = $agentsCollection->min('priority');
+
+// // Get agents with the highest priority
+// $topAgents = $agentsCollection->where('priority', $minPriority);
+
+// // Select the agent with the highest weightage among them
+// $topAgent = $topAgents->sortByDesc('weightage')->first();
+
+// if ($topAgent) {
+//     Log::info('All Agents weightage is full. Assigning to highest priority and weightage agent: ' . $topAgent->id);
+//     $this->ProccessContact($webhookdata, $topAgent, $mainCampaign);
+//     $topAgent->increment('agent_count_weightage', 1);
+// }
+// }
+
+// // Step 5: If all agents are full and limits are reached, send to reserve
+// if ($weightagefull && count($filteredAgents) == 0) {
+// Log::info('All Agents weightage is full and limits reached. Sending to reserve.');
+// $this->ReserveContact($webhookdata, null, $mainCampaign);
+// }
