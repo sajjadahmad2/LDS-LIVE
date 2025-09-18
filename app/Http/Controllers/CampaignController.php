@@ -32,7 +32,7 @@ class CampaignController extends Controller
             return DataTables::of($data)
                 ->addIndexColumn()
                 ->editColumn('lead_type', function ($row) {
-                    return $row->leadType?->name ?? '';
+                    return $row->leadType?->name ?? 'No lead type';
                 })
                 ->addColumn('action', function ($row) {
                     $campaignName = addslashes($row->campaign_name);
