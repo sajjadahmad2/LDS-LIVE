@@ -171,40 +171,20 @@
                                     placeholder="Enter Email">
                             </div>
                             <!-- Destination Location -->
-                            <div class="col-md-4 mb-3">
-                                <label for="destination_location" class="form-label">Destination Location</label>
-                                @if (isset($alllocations) && count($alllocations) > 0)
-                                    <select id="destination_location" name="destination_location" class="form-select"
-                                        style="width: 100%;">
-                                        @foreach ($alllocations as $location)
-                                            <option value="{{ $location->location_id }}">{{ $location->location_name }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                @else
-                                    <input type="text" id="destination_location" name="destination_location"
-                                        class="form-control" placeholder="Enter Destination Location">
-                                @endif
-                            </div>
+
                         </div>
 
                         <div class="row">
 
-                            <!-- Destination Webhook -->
-                            <div class="col-md-4 mb-3">
-                                <label for="destination_webhook" class="form-label">Destination Webhook</label>
-                                <input type="text" id="destination_webhook" name="destination_webhook"
-                                    class="form-control" placeholder="Enter Destination Webhook">
-                            </div>
 
                         </div>
                         <!-- Lead Types as Tabs -->
                         <ul class="nav nav-tabs" id="leadTypeTabs" role="tablist">
                             @foreach ($leadTypes as $index => $leadType)
                                 <li class="nav-item" role="presentation">
-                                    <button class="nav-link {{ $index === 0 ? 'active' : '' }}"
-                                        id="tab-{{ $leadType->id }}" data-bs-toggle="tab"
-                                        data-bs-target="#leadtype-{{ $leadType->id }}" type="button" role="tab">
+                                    <button class="nav-link {{ $index === 0 ? 'active' : '' }}" id="tab-{{ $leadType->id }}"
+                                        data-bs-toggle="tab" data-bs-target="#leadtype-{{ $leadType->id }}"
+                                        type="button" role="tab">
                                         {{ $leadType->name }}
                                     </button>
                                 </li>
@@ -222,7 +202,7 @@
                                     <div class="row">
 
                                         <!-- States -->
-                                        <div class="col-md-12 mb-3">
+                                        <div class="col-md-6 mb-3">
                                             <label class="form-label">States</label>
                                             <select name="lead_types[{{ $leadType->id }}][states][]"
                                                 class="form-select states-select" multiple>
@@ -233,12 +213,13 @@
                                         </div>
 
                                         <!-- Carrier Type -->
-                                        <div class="col-md-12 mb-3">
+                                        <div class="col-md-6 mb-3">
                                             <label class="form-label">Carrier Type</label>
 
                                             <select name="lead_types[{{ $leadType->id }}][carrier_type][]"
                                                 class="form-select carrier-type-select"
-                                                id="carrier_type_{{ $leadType->id }}"   data-lead-type="{{ $leadType->name }}" multiple>
+                                                id="carrier_type_{{ $leadType->id }}"
+                                                data-lead-type="{{ $leadType->name }}" multiple>
 
                                                 @foreach (getCarrierType($leadType->name) as $type)
                                                     <option value="{{ $type }}">{{ $type }}</option>
@@ -246,7 +227,36 @@
                                             </select>
                                         </div>
                                     </div>
+                                    <div class="row">
+                                        <div class="col-md-4 mb-3">
+                                            <label for="destination_location" class="form-label">Destination
+                                                Location</label>
+                                            @if (isset($alllocations) && count($alllocations) > 0)
+                                                <select id="destination_location"
+                                                    name="lead_types[{{ $leadType->id }}][destination_location]"
+                                                    class="form-select" style="width: 100%;">
+                                                    @foreach ($alllocations as $location)
+                                                        <option value="{{ $location->location_id }}">
+                                                            {{ $location->location_name }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                            @else
+                                                <input type="text" id="destination_location"
+                                                    name="destination_location" class="form-control"
+                                                    placeholder="Enter Destination Location">
+                                            @endif
+                                        </div>
 
+                                        <!-- Destination Webhook -->
+                                        <div class="col-md-4 mb-3">
+                                            <label for="destination_webhook" class="form-label">Destination
+                                                Webhook</label>
+                                            <input type="text" id="destination_webhook"
+                                                name="lead_types[{{ $leadType->id }}][destination_webhook]"
+                                                class="form-control" placeholder="Enter Destination Webhook">
+                                        </div>
+                                    </div>
                                     <div class="row">
                                         <div class="col-md-4 mb-3">
                                             <label class="form-label">Daily Limit</label>
@@ -383,7 +393,7 @@
     @include('admin.select2.scriptload', ['load' => ['datatable']])
     <script type="text/javascript">
         $(document).ready(function() {
-              initializeSelect2();
+            initializeSelect2();
             initializeSelect2ForTabs();
 
             function initializeSelect2ForTabs() {
@@ -604,8 +614,8 @@
                 id,
                 name,
                 email,
-                destination_location,
-                destination_webhook,
+                destination_location, // array of { destination_location, lead_type_id }
+                destination_webhook, // array of { destination_webhook, lead_type_id }
                 dailyLimits, // array of { daily_limit, lead_type_id }
                 monthlyLimits, // array of { monthly_limit, lead_type_id }
                 totalLimits, // array of { total_limit, lead_type_id }
@@ -621,8 +631,7 @@
                 $('#agent_id').val(id);
                 $('#name').val(name);
                 $('#email').val(email);
-                $('#destination_location').val(destination_location).trigger('change');
-                $('#destination_webhook').val(destination_webhook);
+
 
                 // ===== Role / access =====
                 if (userRole === true) {
@@ -639,7 +648,7 @@
 
                 // ===== Group incoming states & carriers by lead_type_id =====
                 const
-                grouped = {}; // { [leadTypeId]: { states: [], carriers: [], limits: {}, consent: '', npm_number:'', cross_link:'' } }
+                    grouped = {}; // { [leadTypeId]: { states: [], carriers: [], limits: {}, consent: '', npm_number:'', cross_link:'' } }
 
                 function ensure(key) {
                     if (!grouped[key]) grouped[key] = {
@@ -650,7 +659,9 @@
                         total_limit: '',
                         consent: '',
                         npm_number: '',
-                        cross_link: ''
+                        cross_link: '',
+                        destination_location: '',
+                        destination_webhook: ''
                     };
                     return grouped[key];
                 }
@@ -694,7 +705,15 @@
                     const key = c.lead_type_id != null ? c.lead_type_id : 'all';
                     ensure(key).cross_link = c.cross_link || '';
                 });
-
+                (Array.isArray(destination_location) ? destination_location : []).forEach(d => {
+                    const key = d.lead_type_id != null ? d.lead_type_id : 'all';
+                    ensure(key).destination_location = d.destination_location || '';
+                });
+                (Array.isArray(destination_webhook) ? destination_webhook : []).forEach(d => {
+                    const key = d.lead_type_id != null ? d.lead_type_id : 'all';
+                    ensure(key).destination_webhook = d.destination_webhook || '';
+                });
+                console.log(destination_location);
                 // ===== Apply values to each lead-type tab =====
                 $('[id^="leadtype-"]').each(function() {
                     const tabId = $(this).attr('id'); // e.g., leadtype-3
@@ -715,11 +734,15 @@
                     $(this).find(`[name="lead_types[${leadTypeId}][total_limit]"]`).val(group
                         .total_limit || '');
                     $(this).find(`[name="lead_types[${leadTypeId}][consent]"]`).val(group.consent ||
-                    '');
+                        '');
                     $(this).find(`[name="lead_types[${leadTypeId}][npm_number]"]`).val(group
                         .npm_number || '');
                     $(this).find(`[name="lead_types[${leadTypeId}][cross_link]"]`).val(group
                         .cross_link || '');
+                    $(this).find(`[name="lead_types[${leadTypeId}][destination_webhook]"]`).val(group
+                        .destination_webhook || '');
+                    $(this).find(`[name="lead_types[${leadTypeId}][destination_location]"]`).val(group
+                        .destination_location || '');
                 });
             };
 

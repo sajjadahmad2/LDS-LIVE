@@ -44,11 +44,12 @@ class ProcessWebhookData implements ShouldQueue
         $contact_id  = $webhookdata['contact_id'] ?? null;
         $email       = $webhookdata['email'] ?? null;
         $state       = $webhookdata['state'] ?? null;
-        $lead_type   = $webhookdata['customData']['lead_type'] ?? 1;
-        $leadTypeId  = findLeadTypeId($lead_type);
+        // $lead_type   = $webhookdata['customData']['lead_type'] ?? 1;
+        // $leadTypeId  = findLeadTypeId($lead_type);
 
         // Fetch campaign and agent details
         $mainCampaign = Campaign::find($campaign_id);
+        $leadTypeId = $mainCampaign->lead_type ?? 1;
         $agentIds     = CampaignAgent::where('campaign_id', $campaign_id)
             ->whereHas('agent.states', function ($query) use ($state, $leadTypeId) {
                 $query->whereHas('state', function ($q) use ($state) {
@@ -388,7 +389,7 @@ class ProcessWebhookData implements ShouldQueue
         $tags       = ! empty($contact->tags) ? explode(',', (string) $contact->tags) : [];
         $tags       = array_merge($tags, ['aca']);
         $newdata    = [
-            'locationId'  => $agent->destination_location,
+            'locationId'  => $agent->agentLeadTypes->first()->destination_location,
             'firstName'   => $contact->first_name ?? null,
             'lastName'    => $contact->last_name ?? null,
             'email'       => $contact->email ?? null,
@@ -402,28 +403,27 @@ class ProcessWebhookData implements ShouldQueue
             'dateOfBirth' => $contact->date_of_birth ?? null,
 
         ];
-        $agentUser = User::where('agent_id', $agent->id ?? '')->first();
-        \Log::info('Destination location of  the Agent Id ' . $agentUser->id ?? '' . ' ' . $agentUser->location_id ?? '');
-        appendJobLog($contact->contact_id, 'Destination location of  the Agent Id ' . $agentUser->id ?? '' . ' ' . $agentUser->location_id ?? '');
-        if ($agentUser) {
-            $token = \App\Models\GhlAuth::where('location_id', $agentUser->location_id)->where('user_id', $agentUser->id ?? '')->first();
+        \Log::info('Destination location of  the Agent Id ' . $agent->id ?? '' . ' ' . $agent->agentLeadTypes->first()->destination_location ?? '');
+        appendJobLog($contact->contact_id, 'Destination location of  the Agent Id ' . $agent->id ?? '' . ' ' . $agent->agentLeadTypes->first()->destination_location ?? '');
+        if ($agent) {
+            $token = \App\Models\GhlAuth::where('location_id', $agent->agentLeadTypes->first()->destination_location)->where('user_id', $agent->user_id ?? '')->first();
             if (! $token) {
                 sleep(15);
-                $token = $this->connectLocationFirst($agentUser);
+                $token = $this->connectLocationFirst($agent);
             }
             $custom_field            = $this->customFields($customData, $agent);
             $newdata['customFields'] = $custom_field;
             $url                     = 'contacts';
             sleep(15);
+            \Log::info('This ApiCall made by  this agent having id : ' . $agent->id ?? '' . 'and the location id: ' . $agent->agentLeadTypes->first()->destination_location ?? '');
+            appendJobLog($contact->contact_id, 'This ApiCall made by  this agent having id : ' . $agent->id ?? ''  . 'and the location id: ' . $agent->agentLeadTypes->first()->destination_location ?? '');
+            $response = \App\Helpers\CRM::crmV2($agent->user_id, $url, 'POST', $newdata, [], false, $agent->agentLeadTypes->first()->destination_location);
 
-            \Log::info('This ApiCall made by  this agent having id : ' . $agentUser->id . 'and the location id: ' . $agentUser->location_id ?? '');
-            appendJobLog($contact->contact_id, 'This ApiCall made by  this agent having id : ' . $agentUser->id . 'and the location id: ' . $agentUser->location_id ?? '');
-            $response = \App\Helpers\CRM::crmV2($agentUser->id, $url, 'POST', $newdata, [], false, $agentUser->location_id, $token);
             \Log::info('response.', ['url' => $url, 'response' => $response]);
             if ($response && property_exists($response, 'contact')) {
                 $contact->status = 'Sent';
                 $contact->save();
-                appendJobLog($contact->contact_id, 'Contact sent Successfully to that agent  : ' . $agentUser->agent_id . 'and the location id: ' . $agentUser->location_id ?? '');
+                appendJobLog($contact->contact_id, 'Contact sent Successfully to that agent  : ' . $agent->id . 'and the location id: ' . $agent->agentLeadTypes->first()->destination_location ?? '');
 
             } else {
                 //find campaign agent using the campaign and agent
@@ -453,6 +453,7 @@ class ProcessWebhookData implements ShouldQueue
                         $reserveContact->$key = $value;
                     }
                     $reserveContact->status = 'Not Sent';
+                    $reserveContact->reason = 'Contact Not submitted or Sent Due to this reason ' . json_encode($response);
                     $reserveContact->save();
                     \Log::info("Updated ReserveContact  After Try with contact ID: {$contactId}");
                 } else {
@@ -461,6 +462,7 @@ class ProcessWebhookData implements ShouldQueue
                         $reserveContact->$key = $value;
                     }
                     $reserveContact->status = 'Not Sent';
+                    $reserveContact->reason = 'Contact Not submitted or Sent Due to this reason ' . json_encode($response);
                     $reserveContact->save();
                     \Log::info("Created new ReserverContact After Try  with contact ID: {$contactId}");
                 }
@@ -623,23 +625,23 @@ class ProcessWebhookData implements ShouldQueue
         // \Log::info('Date of CF we Sent :  ' .json_encode($customFieldData) );
         return $customFieldData;
     }
-    protected function connectLocationFirst($agentUser)
+    protected function connectLocationFirst($agent)
     {
-        $token           = GhlAuth::where('user_id', User::where('role', 0)->first()->id)->first();
-        $connectResponse = \App\Helpers\CRM::connectLocation($token->user_id, $agentUser->location_id, $token, $agentUser->id);
+        $token           = GhlAuth::where('user_id', $agent->user_id)->where('user_type','Company')->first();
+        $connectResponse = \App\Helpers\CRM::connectLocation($token->user_id, $agent->agentLeadTypes->first()->destination_location, $token);
         //dd($locationId);
         if (isset($connectResponse->location_id)) {
             if ($connectResponse->statusCode == 400) {
                 \Log::error('Bad Request: Invalid locationId or accessToken', [
-                    'location_id' => $agentUser->location_id,
+                    'location_id' => $agent->agentLeadTypes->first()->destination_location,
                     'user_id'     => $token->user_id,
                     'response'    => $connectResponse,
                 ]);
                 return false;
             }
-            $ghl = GhlAuth::where('location_id', $connectResponse->location_id)->where('user_id', $agentUser->id ?? '')->first();
+            $ghl = GhlAuth::where('location_id', $connectResponse->location_id)->where('user_id', $agent->user_id ?? '')->first();
 
-            $apicall = \App\Helpers\CRM::crmV2($agentUser->id, 'customFields', 'get', '', [], false, $connectResponse->location_id, $ghl);
+            $apicall = \App\Helpers\CRM::crmV2($agent->user_id, 'customFields', 'get', '', [], false, $connectResponse->location_id, $ghl);
             if (isset($apicall->customFields)) {
                 $apiData = $apicall->customFields;
                 // dd($apiData);

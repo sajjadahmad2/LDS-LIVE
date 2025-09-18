@@ -4,10 +4,9 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         .agent-row td:last-child {
-  text-align: center;
-  vertical-align: middle;
-}
-
+            text-align: center;
+            vertical-align: middle;
+        }
     </style>
 @endsection
 
@@ -26,7 +25,7 @@
     <!-- End Breadcrumb -->
     @if (is_role() == 'superadmin' || is_role() == 'admin')
         <button type="button" class="btn btn-primary me-2 mb-3" data-bs-toggle="modal" data-bs-target="#campaignModal"
-            onclick="savaCampaignData(0, '',[],'','')">Add Campaign</button>
+            onclick="savaCampaignData(0,'', '',[],'','')">Add Campaign</button>
         {{-- <button type="button" class="btn btn-success mb-3" data-bs-toggle="modal" data-bs-target="#copyWebhookModal">
             Copy Webhook URL
         </button> --}}
@@ -40,6 +39,7 @@
                         <tr>
                             <th>ID</th>
                             <th>Campaign Name</th>
+                            <th>Type</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -96,12 +96,25 @@
                             <input type="text" id="campaign_name" name="campaign_name" class="form-control rounded-3"
                                 placeholder="Enter Campaign Name" required>
                         </div>
-
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">Lead Type</label>
+                            <select id="lead_type_id" name="lead_type_id" class="form-select rounded-3" required>
+                                <option value="">-- Select Lead Type --</option>
+                                @foreach ($leadtypes as $leadtype)
+                                    <option value="{{ $leadtype->id }}">{{ $leadtype->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
                         <div class="mb-3 text-end">
                             <button type="button" class="btn btn-outline-primary btn-sm rounded-pill" id="addAgentBtn">
                                 <i class="bi bi-plus-circle me-1"></i> Add Agent
                             </button>
                         </div>
+                        <select id="pageSize">
+                            <option value="5">5</option>
+                            <option value="10" selected>10</option>
+                            <option value="15">15</option>
+                        </select>
                         <div class="table-responsive">
                             <table class="table table-borderless align-middle mb-0">
                                 <thead class="bg-light">
@@ -115,7 +128,7 @@
                                 <tbody id="agent-fields"></tbody>
                             </table>
                         </div>
-
+                        <div id="pagination"></div>
                         {{-- <div id="agent-fields" class="row gy-3"></div> --}}
                     </div>
 
@@ -167,6 +180,39 @@
                     currentSelect.val(currentVal);
                 });
             }
+            let currentPage = 1;
+
+            function renderTable() {
+                const rows = document.querySelectorAll('#agent-fields tr');
+                const pageSize = parseInt(document.getElementById('pageSize').value);
+                const totalPages = Math.ceil(rows.length / pageSize);
+
+                rows.forEach((row, index) => {
+                    row.style.display =
+                        index >= (currentPage - 1) * pageSize && index < currentPage * pageSize ?
+                        '' :
+                        'none';
+                });
+
+                // Render pagination
+                const pagination = document.getElementById('pagination');
+                pagination.innerHTML = '';
+                for (let i = 1; i <= totalPages; i++) {
+                    const btn = document.createElement('button');
+                    btn.textContent = i;
+                    btn.className = 'btn btn-sm ' + (i === currentPage ? 'btn-primary' : 'btn-light');
+                    btn.onclick = () => {
+                        currentPage = i;
+                        renderTable();
+                    };
+                    pagination.appendChild(btn);
+                }
+            }
+
+            document.getElementById('pageSize').addEventListener('change', () => {
+                currentPage = 1;
+                renderTable();
+            });
 
             function appendAgentRow(agentId = "", priority = "", weightage = "") {
                 const rowId = Date.now() + Math.floor(Math.random() * 1000);
@@ -202,16 +248,19 @@
 
                 $('#agent-fields').prepend(row);
                 refreshAgentOptions();
+                renderTable();
             }
             // Add Agent Button
             $('#addAgentBtn').on('click', function() {
                 appendAgentRow();
+
             });
 
             // Remove Agent Row
             agentContainer.on('click', '.remove-agent', function() {
                 $(this).closest('.agent-row').remove();
                 refreshAgentOptions();
+                renderTable();
             });
 
             // Prevent duplicate agent selection
@@ -284,12 +333,12 @@
             // ===========================
             // Edit Campaign Handler
             // ===========================
-            window.savaCampaignData = function(id, campaign_name, agents, priority, weightage) {
+            window.savaCampaignData = function(id, leadtype, campaign_name, agents, priority, weightage) {
                 const isNew = !id || id == 0;
 
                 $('#campaign_id').val(id);
                 $('#campaign_name').val(campaign_name || '');
-
+                $('#lead_type_id').val(leadtype || '');
                 const agentContainer = $('#agent-fields');
                 agentContainer.empty(); // Clear all agent rows
 
@@ -328,6 +377,10 @@
                     {
                         data: 'campaign_name',
                         name: 'campaign_name'
+                    },
+                    {
+                        data: 'lead_type',
+                        name: 'lead_type'
                     },
                     {
                         data: 'action',

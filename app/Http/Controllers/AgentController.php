@@ -43,8 +43,6 @@ class AgentController extends Controller
                     'id',
                     'name',
                     'email',
-                    'destination_location',
-                    'destination_webhook',
                     'user_id',
                     'created_at'
                 )
@@ -102,15 +100,17 @@ class AgentController extends Controller
 
                     $user        = User::where('agent_id', $row->id)->first();
                     $locationIds = $user && $user->role == 2
-                    ? AgentUser::where('user_id', $user->id)->pluck('location_id')->toArray()
-                    : [];
-                    $consents      = json_encode($row->agentLeadTypes->map(fn($lt) => ['consent' => $lt->consent, 'lead_type_id' => $lt->lead_type]));
-                    $totalLimits   = json_encode($row->agentLeadTypes->map(fn($lt) => ['total_limit' => $lt->total_limit, 'lead_type_id' => $lt->lead_type]));
-                    $dailyLimits   = json_encode($row->agentLeadTypes->map(fn($lt) => ['daily_limit' => $lt->daily_limit, 'lead_type_id' => $lt->lead_type]));
-                    $monthlyLimits = json_encode($row->agentLeadTypes->map(fn($lt) => ['monthly_limit' => $lt->monthly_limit, 'lead_type_id' => $lt->lead_type]));
-                    $crossLinks    = json_encode($row->agentLeadTypes->map(fn($lt) => ['cross_link' => $lt->cross_link, 'lead_type_id' => $lt->lead_type]));
-                    $npmNumbers    = json_encode($row->agentLeadTypes->map(fn($lt) => ['npm_number' => $lt->npm_number, 'lead_type_id' => $lt->lead_type]));
-                    $carrierTypes  = json_encode($row->carrierTypes->map(fn($c) => [
+                        ? AgentUser::where('user_id', $user->id)->pluck('location_id')->toArray()
+                        : [];
+                    $consents            = json_encode($row->agentLeadTypes->map(fn($lt) => ['consent' => $lt->consent, 'lead_type_id' => $lt->lead_type]));
+                    $totalLimits         = json_encode($row->agentLeadTypes->map(fn($lt) => ['total_limit' => $lt->total_limit, 'lead_type_id' => $lt->lead_type]));
+                    $dailyLimits         = json_encode($row->agentLeadTypes->map(fn($lt) => ['daily_limit' => $lt->daily_limit, 'lead_type_id' => $lt->lead_type]));
+                    $destinationLocation = json_encode($row->agentLeadTypes->map(fn($lt) => ['destination_location' => $lt->destination_location, 'lead_type_id' => $lt->lead_type]));
+                    $destinationWebhook  = json_encode($row->agentLeadTypes->map(fn($lt) => ['destination_webhook' => $lt->destination_webhook, 'lead_type_id' => $lt->lead_type]));
+                    $monthlyLimits       = json_encode($row->agentLeadTypes->map(fn($lt) => ['monthly_limit' => $lt->monthly_limit, 'lead_type_id' => $lt->lead_type]));
+                    $crossLinks          = json_encode($row->agentLeadTypes->map(fn($lt) => ['cross_link' => $lt->cross_link, 'lead_type_id' => $lt->lead_type]));
+                    $npmNumbers          = json_encode($row->agentLeadTypes->map(fn($lt) => ['npm_number' => $lt->npm_number, 'lead_type_id' => $lt->lead_type]));
+                    $carrierTypes        = json_encode($row->carrierTypes->map(fn($c) => [
                         'carrier_type' => $c->carrier_type,
                         'lead_type_id' => $c->lead_type,
                     ]), JSON_HEX_APOS | JSON_HEX_QUOT);
@@ -121,8 +121,8 @@ class AgentController extends Controller
 
                     $leadTypes = json_encode(
                         $row->agentLeadTypes
-                        ? $row->agentLeadTypes->pluck('leadType.id')
-                        : [],
+                            ? $row->agentLeadTypes->pluck('leadType.id')
+                            : [],
                         JSON_HEX_APOS | JSON_HEX_QUOT
                     );
 
@@ -140,8 +140,8 @@ class AgentController extends Controller
                     . $row->id . ', '
                     . '\'' . addslashes($row->name) . '\', '
                     . '\'' . addslashes($row->email) . '\', '
-                    . '\'' . addslashes($row->destination_location) . '\', '
-                    . '\'' . addslashes($row->destination_webhook) . '\', '
+                    . htmlspecialchars($destinationLocation, ENT_QUOTES) . ', '
+                    . htmlspecialchars($destinationWebhook, ENT_QUOTES) . ', '
                     . htmlspecialchars($dailyLimits, ENT_QUOTES) . ', '
                     . htmlspecialchars($monthlyLimits, ENT_QUOTES) . ', '
                     . htmlspecialchars($totalLimits, ENT_QUOTES) . ', '
@@ -183,20 +183,22 @@ class AgentController extends Controller
     {
         try {
             $validator = Validator::make($request->all(), [
-                'name'                       => 'required|string|max:255',
-                'email'                      => 'required|email',
-                'destination_location'       => 'required|string',
-                'destination_webhook'        => 'nullable|string',
-                'lead_types'                 => 'required|array',
-                'lead_types.*.id'            => 'required|integer',
-                'lead_types.*.daily_limit'   => 'nullable|integer',
-                'lead_types.*.monthly_limit' => 'nullable|integer',
-                'lead_types.*.total_limit'   => 'nullable|integer',
-                'lead_types.*.npm_number'    => 'nullable|string',
-                'lead_types.*.cross_link'    => 'nullable|string',
-                'lead_types.*.consent'       => 'nullable|string',
-                'lead_types.*.states'        => 'array|nullable',
-                'lead_types.*.carrier_type'  => 'array|nullable',
+                'name'                              => 'required|string|max:255',
+                'email'                             => 'required|email',
+                'destination_location'              => 'required|string',
+                'destination_webhook'               => 'nullable|string',
+                'lead_types'                        => 'required|array',
+                'lead_types.*.id'                   => 'required|integer',
+                'lead_types.*.daily_limit'          => 'nullable|integer',
+                'lead_types.*.monthly_limit'        => 'nullable|integer',
+                'lead_types.*.total_limit'          => 'nullable|integer',
+                'lead_types.*.npm_number'           => 'nullable|string',
+                'lead_types.*.cross_link'           => 'nullable|string',
+                'lead_types.*.consent'              => 'nullable|string',
+                'lead_types.*.states'               => 'array|nullable',
+                'lead_types.*.carrier_type'         => 'array|nullable',
+                'lead_types.*.destination_location' => 'string|nullable',
+                'lead_types.*.destination_webhook'  => 'string|nullable',
             ]);
 
             if ($validator->fails()) {
@@ -212,11 +214,11 @@ class AgentController extends Controller
 
             // Create Agent (only general info)
             $agent = Agent::create([
-                'name'                 => $validated['name'],
-                'email'                => $validated['email'],
-                'destination_location' => $validated['destination_location'],
-                'destination_webhook'  => $validated['destination_webhook'] ?? null,
-                'user_id'              => login_id(),
+                'name'    => $validated['name'],
+                'email'   => $validated['email'],
+                // 'destination_location' => $validated['destination_location'],
+                // 'destination_webhook'  => $validated['destination_webhook'] ?? null,
+                'user_id' => login_id(),
             ]);
 
             // Loop through each lead type
@@ -237,14 +239,16 @@ class AgentController extends Controller
 
                 // Save the lead type record
                 $agentLead = AgentLeadType::create([
-                    'agent_id'      => $agent->id,
-                    'lead_type'     => $lead['id'],
-                    'daily_limit'   => $lead['daily_limit'] ?? null,
-                    'monthly_limit' => $lead['monthly_limit'] ?? null,
-                    'total_limit'   => $lead['total_limit'] ?? null,
-                    'npm_number'    => $lead['npm_number'] ?? null,
-                    'cross_link'    => $lead['cross_link'] ?? null,
-                    'consent'       => $lead['consent'] ?? null,
+                    'agent_id'             => $agent->id,
+                    'lead_type'            => $lead['id'],
+                    'daily_limit'          => $lead['daily_limit'] ?? null,
+                    'monthly_limit'        => $lead['monthly_limit'] ?? null,
+                    'total_limit'          => $lead['total_limit'] ?? null,
+                    'npm_number'           => $lead['npm_number'] ?? null,
+                    'cross_link'           => $lead['cross_link'] ?? null,
+                    'consent'              => $lead['consent'] ?? null,
+                    'destination_location' => $lead['destination_location'] ?? null,
+                    'destination_webhook'  => $lead['destination_webhook'] ?? null,
                 ]);
 
                 // Save states
@@ -272,6 +276,7 @@ class AgentController extends Controller
             }
 
             // Assign Agent as User
+            $this->agentLocationsToken($agentLocations, $agent);
             $this->addAgentAsUser($agent, $request);
 
             \DB::commit();
@@ -292,21 +297,20 @@ class AgentController extends Controller
             $agent = Agent::findOrFail($id);
 
             $validator = Validator::make($request->all(), [
-                'name'                       => 'required|string|max:255',
-                'email'                      => 'required|email',
-
-                'destination_location'       => 'required|string',
-                'destination_webhook'        => 'nullable|string',
-                'lead_types'                 => 'required|array',
-                'lead_types.*.id'            => 'required|integer',
-                'lead_types.*.daily_limit'   => 'nullable|integer',
-                'lead_types.*.monthly_limit' => 'nullable|integer',
-                'lead_types.*.total_limit'   => 'nullable|integer',
-                'lead_types.*.npm_number'    => 'nullable|string',
-                'lead_types.*.cross_link'    => 'nullable|string',
-                'lead_types.*.consent'       => 'nullable|string',
-                'lead_types.*.states'        => 'array|nullable',
-                'lead_types.*.carrier_type'  => 'array|nullable',
+                'name'                              => 'required|string|max:255',
+                'email'                             => 'required|email',
+                'lead_types'                        => 'required|array',
+                'lead_types.*.id'                   => 'required|integer',
+                'lead_types.*.daily_limit'          => 'nullable|integer',
+                'lead_types.*.monthly_limit'        => 'nullable|integer',
+                'lead_types.*.total_limit'          => 'nullable|integer',
+                'lead_types.*.npm_number'           => 'nullable|string',
+                'lead_types.*.cross_link'           => 'nullable|string',
+                'lead_types.*.consent'              => 'nullable|string',
+                'lead_types.*.states'               => 'array|nullable',
+                'lead_types.*.carrier_type'         => 'array|nullable',
+                'lead_types.*.destination_location' => 'string|nullable',
+                'lead_types.*.destination_webhook'  => 'string|nullable',
             ]);
 
             if ($validator->fails()) {
@@ -322,18 +326,18 @@ class AgentController extends Controller
 
             // Update agent
             $agent->update([
-                'name'                 => $validated['name'],
-                'email'                => $validated['email'],
-                'destination_location' => $validated['destination_location'],
-                'destination_webhook'  => $validated['destination_webhook'] ?? null,
-                'user_id'              => login_id(),
+                'name'    => $validated['name'],
+                'email'   => $validated['email'],
+                // 'destination_location' => $validated['destination_location'],
+                // 'destination_webhook'  => $validated['destination_webhook'] ?? null,
+                'user_id' => login_id(),
             ]);
-
+            $agentLocations = [];
             // Clean old records
             AgentLeadType::where('agent_id', $agent->id)->delete();
             AgentState::where('agent_id', $agent->id)->delete();
             AgentCarrierType::where('agent_id', $agent->id)->delete();
-
+            AgentUser::where('agent_id', $agent->id)->delete();
             // Recreate fresh
             foreach ($validated['lead_types'] as $lead) {
                 // Check if ALL relevant fields are empty
@@ -352,15 +356,18 @@ class AgentController extends Controller
 
                 // Save the lead type record
                 $agentLead = AgentLeadType::create([
-                    'agent_id'      => $agent->id,
-                    'lead_type'     => $lead['id'],
-                    'daily_limit'   => $lead['daily_limit'] ?? null,
-                    'monthly_limit' => $lead['monthly_limit'] ?? null,
-                    'total_limit'   => $lead['total_limit'] ?? null,
-                    'npm_number'    => $lead['npm_number'] ?? null,
-                    'cross_link'    => $lead['cross_link'] ?? null,
-                    'consent'       => $lead['consent'] ?? null,
+                    'agent_id'             => $agent->id,
+                    'lead_type'            => $lead['id'],
+                    'daily_limit'          => $lead['daily_limit'] ?? null,
+                    'monthly_limit'        => $lead['monthly_limit'] ?? null,
+                    'total_limit'          => $lead['total_limit'] ?? null,
+                    'npm_number'           => $lead['npm_number'] ?? null,
+                    'cross_link'           => $lead['cross_link'] ?? null,
+                    'consent'              => $lead['consent'] ?? null,
+                    'destination_location' => $lead['destination_location'] ?? null,
+                    'destination_webhook'  => $lead['destination_webhook'] ?? null,
                 ]);
+                $agentLocations[] = $lead['destination_location'];
 
                 // Save states
                 if (! empty($lead['states'])) {
@@ -387,6 +394,7 @@ class AgentController extends Controller
             }
 
             // Update agent user
+            $this->agentLocationsToken($agentLocations, $agent);
             $this->addAgentAsUser($agent, $request);
 
             \DB::commit();
@@ -400,12 +408,84 @@ class AgentController extends Controller
             ], 500);
         }
     }
+    public function agentLocationsToken($agentLocations = [], $agent)
+    {
+        if (count($agentLocations) <= 0) {
+            return false;
 
+        }
+        AgentUser::where('agent_id', $agent->id)->delete();
+        foreach ($agentLocations as $location) {
+            if (empty($location)) {
+                continue;
+            }
+
+            $usertoken  = GhlAuth::where('user_id', $agent->user_id)->where('user_type', 'Company')->first();
+            $agenttoken = GhlAuth::where('user_id', $agent->user_id)->where('user_type', 'Location')->where('location_id', $location)->first();
+            if (empty($usertoken)) {
+                return false;
+            }
+            $locationId = \CRM::connectLocation($usertoken->user_id, $location, $usertoken);
+            if (isset($locationId->location_id)) {
+                if ($locationId->statusCode == 400) {
+                    \Log::error('Bad Request: Invalid locationId or accessToken', [
+                        'location_id' => $$location,
+                        'user_id'     => $agenttoken->user_id,
+                        'response'    => $locationId,
+                    ]);
+                    return response()->json(['error' => 'Invalid locationId or accessToken'], 400);
+                }
+
+                $ghl            = GhlAuth::where('location_id', $locationId->location_id)->where('user_id', $agent->user_id)->first();
+                $locationDetail = \CRM::crmV2($agenttoken->user_id, 'locations/' . $ghl->location_id, 'get', '', [], false, $ghl->location_id, $ghl);
+                if (isset($locationDetail->location)) {
+                    $subAccountDetail = $locationDetail->location;
+                }
+                if ($subAccountDetail) {
+                    $ghl->name = $subAccountDetail->location->name ?? '';
+                    $ghl->save();
+                    \Log::info('Updated GhlAuth record', [
+                        'location_id' => $locationId->location_id,
+                    ]);
+                }
+                $apicall = \CRM::crmV2($agent->user_id, 'customFields', 'get', '', [], false, $ghl->location_id, $ghl, $agent->user_id);
+                if (isset($apicall->customFields)) {
+                    $apiData = $apicall->customFields;
+                    // dd($apiData);
+                    foreach ($apiData as $field) {
+                        // Find existing custom field record
+                        $customField = \App\Models\CustomField::where('cf_id', $field->id)->where('location_id', $field->locationId)->first();
+                        // Prepare data array with custom field values
+                        $customFieldData = [
+                            'cf_id'       => $field->id ?? null,
+                            'cf_name'     => $field->name ?? null,
+                            'cf_key'      => $field->fieldKey ?? null,
+                            'dataType'    => $field->dataType ?? null,
+                            'location_id' => $field->locationId ?? null,
+                        ];
+                        if ($customField) {
+                            foreach ($customFieldData as $key => $value) {
+                                $customField->$key = $value;
+                            }
+                            $customField->save();
+                        } else {
+                            $customField = new CustomField();
+                            foreach ($customFieldData as $key => $value) {
+                                $customField->$key = $value;
+                            }
+                            $customField->save();
+                        }
+                    }
+                }
+
+            }
+            return true;
+        }
+    }
     public function addAgentAsUser($agent, $request)
     {
-        if (! is_null($agent->destination_location)) {
-
-            $role        = $request->has('userRoleChecked') && is_role() == 'companyadmin' ? 2 : ($request->has('userRoleChecked') ? 1 : 3);
+        if ($request->has('userRoleChecked') && $request->userRoleChecked == 'on') {
+            $role        = $request->has('userRoleChecked') && is_role() == 'admin' ? 3 : ($request->has('userRoleChecked') ?  1 : 3);
             $from_agents = $request->has('userRoleChecked') ? 1 : 0;
             AgentUser::where('agent_id', $agent->id)->delete();
             $user = User::updateOrCreate(
@@ -432,85 +512,55 @@ class AgentController extends Controller
                 AgentUser::insert($agentAccessData); // Bulk insert for efficiency
             }
 
-            if ($user) {
-                $token = GhlAuth::where('user_id', 1)->first();
-                if ($token) {
-                    $locationId = \CRM::connectLocation($token->user_id, $user->location_id, null, $user->id);
-                    if (isset($locationId->location_id)) {
-                        if ($locationId->statusCode == 400) {
-                            \Log::error('Bad Request: Invalid locationId or accessToken', [
-                                'location_id' => $user->location_id,
-                                'user_id'     => $token->user_id,
-                                'response'    => $locationId,
-                            ]);
-                            return response()->json(['error' => 'Invalid locationId or accessToken'], 400);
-                        }
+            // if ($user) {
+            //     $token = GhlAuth::where('user_id', $user->id)->where('user_type', 'Company')->first();
+            //     if ($token) {
+            //         $locationId = \CRM::connectLocation($token->user_id, $user->location_id, null, $user->id);
+            //         if (isset($locationId->location_id)) {
+            //             if ($locationId->statusCode == 400) {
+            //                 \Log::error('Bad Request: Invalid locationId or accessToken', [
+            //                     'location_id' => $user->location_id,
+            //                     'user_id'     => $token->user_id,
+            //                     'response'    => $locationId,
+            //                 ]);
+            //                 return response()->json(['error' => 'Invalid locationId or accessToken'], 400);
+            //             }
 
-                        $ghl            = GhlAuth::where('location_id', $locationId->location_id)->where('user_id', $user->id)->first();
-                        $locationDetail = \CRM::crmV2($token->user_id, 'locations/' . $ghl->location_id, 'get', '', [], false, $ghl->location_id, $ghl);
-                        //\Log::info(["locationID" => $locationDetail]);
-                        if (isset($locationDetail->location)) {
-                            $subAccountDetail = $locationDetail->location;
-                            $user             = User::find($user->id);
-                            if ($user) {
-                                $user->update([
-                                    'name'  => $subAccountDetail->name ?? $user->name,
-                                    'email' => $subAccountDetail->email ?? $user->email,
-                                ]);
-                            }
-                            \Log::info(["users" => $user]);
-                            // Update Agent details
-                            // if (isset($agent) && $agent instanceof Agent) {
-                            //     $agent->update([
-                            //         'name' => $subAccountDetail->name ?? $user->name,
-                            //         'email' => $subAccountDetail->email ?? $user->email,
-                            //     ]);
-                            // }
+            //             $ghl            = GhlAuth::where('location_id', $locationId->location_id)->where('user_id', $user->id)->first();
+            //             $locationDetail = \CRM::crmV2($token->user_id, 'locations/' . $ghl->location_id, 'get', '', [], false, $ghl->location_id, $ghl);
+            //             //\Log::info(["locationID" => $locationDetail]);
+            //             if (isset($locationDetail->location)) {
+            //                 $subAccountDetail = $locationDetail->location;
+            //                 $user             = User::find($user->id);
+            //                 if ($user) {
+            //                     $user->update([
+            //                         'name'  => $subAccountDetail->name ?? $user->name,
+            //                         'email' => $subAccountDetail->email ?? $user->email,
+            //                     ]);
+            //                 }
+            //                 \Log::info(["users" => $user]);
+            //                 // Update Agent details
+            //                 // if (isset($agent) && $agent instanceof Agent) {
+            //                 //     $agent->update([
+            //                 //         'name' => $subAccountDetail->name ?? $user->name,
+            //                 //         'email' => $subAccountDetail->email ?? $user->email,
+            //                 //     ]);
+            //                 // }
 
-                        }
-                        if ($ghl) {
-                            $ghl->name    = $locationId->name ?? '';
-                            $ghl->user_id = $user->id ?? '';
-                            $ghl->save();
-                            \Log::info('Updated GhlAuth record', [
-                                'location_id' => $locationId->location_id,
-                                'name'        => $user->name,
-                            ]);
-                        }
+            //             }
+            //             if ($ghl) {
+            //                 $ghl->name    = $locationId->name ?? '';
+            //                 $ghl->user_id = $user->id ?? '';
+            //                 $ghl->save();
+            //                 \Log::info('Updated GhlAuth record', [
+            //                     'location_id' => $locationId->location_id,
+            //                     'name'        => $user->name,
+            //                 ]);
+            //             }
 
-                        $apicall = \CRM::crmV2($user->id, 'customFields', 'get', '', [], false, $ghl->location_id, $ghl, $user->id);
-                        //dd($apicall);
-                        if (isset($apicall->customFields)) {
-                            $apiData = $apicall->customFields;
-                            // dd($apiData);
-                            foreach ($apiData as $field) {
-                                // Find existing custom field record
-                                $customField = \App\Models\CustomField::where('cf_id', $field->id)->where('location_id', $field->locationId)->first();
-                                // Prepare data array with custom field values
-                                $customFieldData = [
-                                    'cf_id'       => $field->id ?? null,
-                                    'cf_name'     => $field->name ?? null,
-                                    'cf_key'      => $field->fieldKey ?? null,
-                                    'dataType'    => $field->dataType ?? null,
-                                    'location_id' => $field->locationId ?? null,
-                                ];
-                                if ($customField) {
-                                    foreach ($customFieldData as $key => $value) {
-                                        $customField->$key = $value;
-                                    }
-                                    $customField->save();
-                                } else {
-                                    $customField = new CustomField();
-                                    foreach ($customFieldData as $key => $value) {
-                                        $customField->$key = $value;
-                                    }
-                                    $customField->save();
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            //         }
+            //     }
+            // }
 
         }
     }
@@ -610,8 +660,8 @@ class AgentController extends Controller
                 DB::raw('(SELECT COUNT(*) FROM contacts WHERE contacts.agent_id = agents.id AND DATE(contacts.created_at) = CURRENT_DATE) as daily_contacts_count'),
                 DB::raw('(SELECT COUNT(*) FROM contacts WHERE contacts.agent_id = agents.id' . (
                     ! empty($startDate) && ! empty($endDate)
-                    ? ' AND contacts.created_at BETWEEN "' . $startDate . '" AND "' . $endDate . '"'
-                    : ''
+                        ? ' AND contacts.created_at BETWEEN "' . $startDate . '" AND "' . $endDate . '"'
+                        : ''
                 ) . ') as total_contacts_count')
             )
                 ->whereIn('agents.id', $agentId)

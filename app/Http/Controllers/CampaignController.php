@@ -5,6 +5,7 @@ use App\Models\Agent;
 use App\Models\AgentUser;
 use App\Models\Campaign;
 use App\Models\CampaignAgent;
+use App\Models\LeadType;
 use Auth;
 use DataTables;
 use DB;
@@ -30,15 +31,22 @@ class CampaignController extends Controller
             }
             return DataTables::of($data)
                 ->addIndexColumn()
-
+                ->editColumn('lead_type', function ($row) {
+                    return $row->leadType->name;
+                })
                 ->addColumn('action', function ($row) {
                     $campaignName = addslashes($row->campaign_name);
-                    $agents       = json_encode($row->agents->pluck('id')->toArray());
-                    $weightage    = json_encode(array_map('intval', $row->compaignAgents->pluck('weightage')->toArray()));
-                    $priority     = json_encode($row->compaignAgents->pluck('priority')->toArray());
+
+                    $agents    = json_encode($row->agents->pluck('id')->toArray());
+                    $weightage = json_encode(array_map('intval', $row->compaignAgents->pluck('weightage')->toArray()));
+                    $priority  = json_encode($row->compaignAgents->pluck('priority')->toArray());
                     if (is_role() == 'superadmin' || is_role() == 'admin') {
                         $btn = '<button type="button" class="btn btn-success me-2" onclick="copyCampaignUrl(' . $row->id . ')">CopyUrl</button>';
-                        $btn .= '<button type="button" class="btn btn-primary me-2" onclick="savaCampaignData(' . $row->id . ', \'' . addslashes($campaignName) . '\', \'' . addslashes($agents) . '\', \'' . addslashes($priority) . '\', \'' . addslashes($weightage) . '\')">Edit</button>';
+                        $btn .= '<button type="button" class="btn btn-primary me-2"
+                                    onclick="savaCampaignData(' . $row->id . ', \'' . addslashes($row->lead_type) . '\', \'' . addslashes($campaignName) . '\', \'' . addslashes($agents) . '\', \'' . addslashes($priority) . '\', \'' . addslashes($weightage) . '\')">
+                                    Edit
+                                </button>';
+
                         $btn .= '<a href="javascript:void(0);" onclick="deleteCampaign(' . $row->id . ')"><button type="button" class="btn btn-danger">Delete</button></a>';
                     } else {
                         $btn = 'Not Authorized';
@@ -51,13 +59,15 @@ class CampaignController extends Controller
         }
         $agents    = Agent::where('user_id', login_id())->get();
         $campaigns = Campaign::where('user_id', login_id())->get();
-
+        $leadtypes = LeadType::where('user_id', login_id())->get();
         return view('admin.campaigns.index', get_defined_vars());
     }
     public function store(Request $request)
     {
+
         $validated = $request->validate([
             'campaign_name' => 'required|string|max:255',
+            'lead_type_id'  => 'required',
             'agents'        => 'required|array',
             'weightage'     => 'required|array',
             'priority'      => 'required|array',
@@ -68,6 +78,7 @@ class CampaignController extends Controller
                 $campaign = Campaign::create([
                     'campaign_name' => $validated['campaign_name'],
                     'user_id'       => auth()->id(),
+                    'lead_type'     => $validated['lead_type_id'],
                 ]);
 
                 foreach ($validated['agents'] as $rowId => $agentId) {
@@ -122,6 +133,7 @@ class CampaignController extends Controller
 
         $validated = $request->validate([
             'campaign_name' => 'required|string|max:255',
+            'lead_type_id'  => 'required',
             'agents'        => 'required|array',
             'weightage'     => 'required|array', // ✅ lowercase
             'priority'      => 'required|array',
@@ -132,6 +144,7 @@ class CampaignController extends Controller
                 $campaign->update([
                     'campaign_name' => $validated['campaign_name'],
                     'user_id'       => auth()->id(),
+                    'lead_type'     => $validated['lead_type_id'],
                 ]);
 
                 CampaignAgent::where('campaign_id', $campaign->id)->delete();

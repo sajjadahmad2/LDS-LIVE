@@ -10,7 +10,7 @@ class Campaign extends Model
     use HasFactory;
 
     protected $fillable = [
-        'campaign_name', 'carrier_type', 'priority',
+        'campaign_name', 'carrier_type', 'priority','lead_type',
         'daily_limit', 'monthly_limit', 'weightage', 'user_id', 'location_id','total_limit'
     ];
 
@@ -32,7 +32,10 @@ class Campaign extends Model
     {
         return $this->hasMany(CampaignAgent::class);
     }
-
+    public function leadType()
+    {
+        return $this->belongsTo(LeadType::class, 'lead_type', 'id');
+    }
     public function contacts()
     {
       return $this->hasMany(Contact::class, 'campaign_id');

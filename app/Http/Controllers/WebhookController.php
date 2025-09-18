@@ -168,7 +168,8 @@ class WebhookController extends Controller
 
     public function ContactWebhook($request, $camid = null, $lead_type = null)
     {
-        $leadTypeId = findLeadTypeId($lead_type);
+        //$leadTypeId = findLeadTypeId($lead_type);
+        $leadTypeId = Campaign::where('id', $camid)->first()->lead_type ?? 1;
 
         $data = $request->all();
 
@@ -302,6 +303,7 @@ class WebhookController extends Controller
                     if ($total && $monthly && $daily) {
                         if ($campaignAgent->agent_count_weightage < $campaignAgent->weightage) {
                             // Assign lead to this agent
+              
                             $proccessContact->agent_id = $agent->id;
                             $proccessContact->save();
                             $weightageFull = false;
@@ -349,6 +351,7 @@ class WebhookController extends Controller
                         $daily   = $agent->daily_contacts_count < $agentData->daily_limit;
 
                         if ($total && $monthly && $daily) {
+
                             $proccessContact->agent_id = $agent->id;
                             $proccessContact->save();
                             \Log::info('Re-attempting assignment after weightage reset. Agent ID: ' . ($agent->name ?? ''));
@@ -361,6 +364,7 @@ class WebhookController extends Controller
                 }
             }
         }
+
     }
 
     protected function ReserveContact($data, $agent = null, $campaign, $leadTypeId)
