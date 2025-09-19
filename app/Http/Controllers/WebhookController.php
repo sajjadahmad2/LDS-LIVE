@@ -228,6 +228,7 @@ class WebhookController extends Controller
                 $proccessContact->save();
                 \Log::info("Send this Campaign id to the Find Agent: {$camid}");
                 $this->findAgent($proccessContact, $camid, $leadTypeId);
+                appendJobLog($contact_id, 'Temp Assigned Agent is  : ' . $proccessContact->agent_id ?? 'No Agent');
                 \Log::info("Created new contact from webhook contact Email: {$email}");
             }
             return response()->json(['status' => 'success', 'message' => "webhook receieved and processed"], 200);
