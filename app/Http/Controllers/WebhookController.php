@@ -101,7 +101,7 @@ class WebhookController extends Controller
         $contactId      = $data['contact_id'] ?? null;
         $state          = $data['state'] ?? null;
         $campaignId     = base64_decode($campaignIdParam);
-        $requiredFields = ['email', 'state', 'type', 'lead_type'];
+        $requiredFields = ['email', 'state', 'type'];
         $dataKeys       = array_keys($data);
         appendJobLog($contactId, 'Contact came from source ' . ($data['contact_source'] ?? null) . ' having the type ' . ($type ?? null) . ' and the custom Type ' . ($customType ?? null));
         if ($type === 'ContactCreate') {
@@ -303,7 +303,7 @@ class WebhookController extends Controller
                     if ($total && $monthly && $daily) {
                         if ($campaignAgent->agent_count_weightage < $campaignAgent->weightage) {
                             // Assign lead to this agent
-              
+
                             $proccessContact->agent_id = $agent->id;
                             $proccessContact->save();
                             $weightageFull = false;
