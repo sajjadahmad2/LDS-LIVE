@@ -202,7 +202,7 @@
                                     <div class="row">
 
                                         <!-- States -->
-                                        <div class="col-md-6 mb-3">
+                                        <div class="col-md-12 mb-3">
                                             <label class="form-label">States</label>
                                             <select name="lead_types[{{ $leadType->id }}][states][]"
                                                 class="form-select states-select" multiple>
@@ -213,7 +213,7 @@
                                         </div>
 
                                         <!-- Carrier Type -->
-                                        <div class="col-md-6 mb-3">
+                                        <div class="col-md-12 mb-3">
                                             <label class="form-label">Carrier Type</label>
 
                                             <select name="lead_types[{{ $leadType->id }}][carrier_type][]"
