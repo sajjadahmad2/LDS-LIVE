@@ -242,7 +242,7 @@ class WebhookController extends Controller
         $state      = $proccessContact->state;
         $contact_id = $proccessContact->contact_id;
         \Log::info('Agent Find for ' . $state . ' and Campaign ' . $camid);
-        appendJobLog($contact_id, 'Contact Came to Agent Find for ' . $state . ' and Campaign ' . $camid);
+        appendJobLog($contact_id, 'Contact Came to Agent Find for ' . $state . ' and Campaign ' . $camid . ' and Campaign ' . $leadTypeId);
         if (! is_null($state)) {
             $currentMonth = Carbon::now('America/Chicago')->month;
             $currentDate  = Carbon::now('America/Chicago')->format('Y-m-d');
@@ -281,6 +281,7 @@ class WebhookController extends Controller
             $agentIdss = $groupedAgents->map(function ($group) {
                 return $group->pluck('agent.name')->toArray();
             });
+            appendJobLog($contact_id, 'all agents found : ' . json_encode($groupedAgents));
 
             \Log::info('Agent Having the State matched in consent for Contact id: ' . $contact_id . ' : ' . json_encode($agentIdss));
             foreach ($groupedAgents as $priority => $priorityAgents) {
