@@ -308,7 +308,7 @@ function uploadFile($file, $path, $name)
 function getCarrierType($leadType = null)
 {
     $carriers = [
-        'ACA'      => [
+        'ACA'                => [
             // UnitedHealthcare
             "UnitedHealthcare",
             "UnitedHealthcare Insurance Company of New York",
@@ -435,7 +435,7 @@ function getCarrierType($leadType = null)
         ],
 
         // You can add other lead types here later
-        'Final Expense - FE'       => [
+        'Final Expense - FE' => [
             "American National Life Insurance Company of Texas",
             "Guarantee Trust Life Insurance Company",
             "Union Fidelity Life Insurance Company",
@@ -465,7 +465,7 @@ function getCarrierType($leadType = null)
             "Physicians Mutual",
             "NATIONAL GUARDIAN LIFE INSURANCE COMPANY",
         ],
-        'Medicare' => [
+        'Medicare'           => [
             "UnitedHealthcare",
             "Humana",
             "Aetna",
@@ -498,7 +498,29 @@ function getCarrierType($leadType = null)
             "SelectHealth (UT)",
             "Regence (OR/WA/ID/UT)",
             "Premera (WA)",
-            "Sentara (VA)"],
+            "Sentara (VA)",
+            "CarePlus Health Plans, Inc.",
+            "Florida Blue HMO",
+            "Ascension Complete",
+            "Lasso Healthcare",
+            "Clear Spring Health",
+            "Mutual of Omaha Rx",
+            "Express Scripts Medicare",
+            "Elixir Insurance",
+            "Molina Healthcare of Florida",
+            "Alignment Health Plan",
+            "Cigna Healthcare",
+            "Longevity Health Plan",
+            "Wellcare by Allwell",
+            "Simply Healthcare Plans, Inc.",
+            "Simply Healthcare",
+            "Gold Kidney Health Plan",
+            "AHF",
+            "Allwell",
+            "American Health Advantage of Florida",
+            "Florida Complete Care",
+        ],
+
     ];
 
     // Return only requested type if given
