@@ -281,7 +281,7 @@ class WebhookController extends Controller
             $agentIdss = $groupedAgents->map(function ($group) {
                 return $group->pluck('agent.name')->toArray();
             });
-            appendJobLog($contact_id, 'all agents found : ' . json_encode($groupedAgents));
+            //appendJobLog($contact_id, 'all agents found : ' . json_encode($groupedAgents));
 
             \Log::info('Agent Having the State matched in consent for Contact id: ' . $contact_id . ' : ' . json_encode($agentIdss));
             foreach ($groupedAgents as $priority => $priorityAgents) {
@@ -291,6 +291,7 @@ class WebhookController extends Controller
 
                     $agent     = $campaignAgent->agent;
                     $agentData = $agent->agentLeadTypes->first(); // safer than [0]
+                    appendJobLog($contact_id, 'all agents found : ' . json_encode($agentData));
 
                     if (! $agentData) {
                         // No lead type found for this agent, skip
