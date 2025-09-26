@@ -170,7 +170,7 @@ class WebhookController extends Controller
     {
         //$leadTypeId = findLeadTypeId($lead_type);
         $leadTypeId = Campaign::where('id', $camid)->first()->lead_type ?? 1;
-
+        dd($leadTypeId,$cmid);
         $data = $request->all();
 
         $contact_id  = $data['contact_id'] ?? null;
