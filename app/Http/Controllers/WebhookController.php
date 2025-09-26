@@ -170,7 +170,7 @@ class WebhookController extends Controller
     {
         //$leadTypeId = findLeadTypeId($lead_type);
         $leadTypeId = Campaign::where('id', $camid)->first()->lead_type ?? 1;
-        dd($leadTypeId,$camid);
+
         $data = $request->all();
 
         $contact_id  = $data['contact_id'] ?? null;
@@ -228,6 +228,7 @@ class WebhookController extends Controller
                 $proccessContact->save();
                 \Log::info("Send this Campaign id to the Find Agent: {$camid}");
                 $this->findAgent($proccessContact, $camid, $leadTypeId);
+                dd($proccessContact);
                 appendJobLog($contact_id, 'Temp Assigned Agent is  : ' . $proccessContact->agent_id ?? 'No Agent');
                 \Log::info("Created new contact from webhook contact Email: {$email}");
             }
