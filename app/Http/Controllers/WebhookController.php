@@ -278,7 +278,7 @@ class WebhookController extends Controller
                 ->get();
 
             $groupedAgents = $campaignAgents->groupBy('priority');
-                dd($groupedAgents);
+
             $agentIdss = $groupedAgents->map(function ($group) {
                 return $group->pluck('agent.name')->toArray();
             });
