@@ -228,7 +228,7 @@ class WebhookController extends Controller
                 $proccessContact->save();
                 \Log::info("Send this Campaign id to the Find Agent: {$camid}");
                 $this->findAgent($proccessContact, $camid, $leadTypeId);
-                dd($proccessContact);
+
                 appendJobLog($contact_id, 'Temp Assigned Agent is  : ' . $proccessContact->agent_id ?? 'No Agent');
                 \Log::info("Created new contact from webhook contact Email: {$email}");
             }
@@ -278,7 +278,7 @@ class WebhookController extends Controller
                 ->get();
 
             $groupedAgents = $campaignAgents->groupBy('priority');
-
+                dd($groupedAgents);
             $agentIdss = $groupedAgents->map(function ($group) {
                 return $group->pluck('agent.name')->toArray();
             });
