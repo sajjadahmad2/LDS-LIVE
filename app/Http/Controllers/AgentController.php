@@ -197,8 +197,8 @@ class AgentController extends Controller
                 'lead_types.*.consent'              => 'nullable|string',
                 'lead_types.*.states'               => 'array|nullable',
                 'lead_types.*.carrier_type'         => 'array|nullable',
-                'lead_types.*.destination_location' => 'string|nullable',
-                'lead_types.*.destination_webhook'  => 'string|nullable',
+                'lead_types.*.destination_location' => 'array|nullable',
+                'lead_types.*.destination_webhook'  => 'array|nullable',
             ]);
 
             if ($validator->fails()) {
@@ -309,8 +309,8 @@ class AgentController extends Controller
                 'lead_types.*.consent'              => 'nullable|string',
                 'lead_types.*.states'               => 'array|nullable',
                 'lead_types.*.carrier_type'         => 'array|nullable',
-                'lead_types.*.destination_location' => 'string|nullable',
-                'lead_types.*.destination_webhook'  => 'string|nullable',
+                'lead_types.*.destination_location' => 'array|nullable',
+                'lead_types.*.destination_webhook'  => 'array|nullable',
             ]);
 
             if ($validator->fails()) {
