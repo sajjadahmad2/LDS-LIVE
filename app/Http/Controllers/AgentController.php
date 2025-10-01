@@ -235,7 +235,7 @@ class AgentController extends Controller
                 if ($allEmpty) {
                     continue; // Skip this lead type entirely
                 }
-
+                $agentLocations = [];
                 // Save the lead type record
                 $agentLead = AgentLeadType::create([
                     'agent_id'             => $agent->id,
@@ -249,7 +249,7 @@ class AgentController extends Controller
                     'destination_location' => $lead['destination_location'] ?? null,
                     'destination_webhook'  => $lead['destination_webhook'] ?? null,
                 ]);
-
+                $agentLocations[] = $lead['destination_location'];
                 // Save states
                 if (! empty($lead['states'])) {
                     foreach ($lead['states'] as $stateId) {
