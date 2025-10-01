@@ -185,8 +185,7 @@ class AgentController extends Controller
             $validator = Validator::make($request->all(), [
                 'name'                              => 'required|string|max:255',
                 'email'                             => 'required|email',
-                'destination_location'              => 'required|string',
-                'destination_webhook'               => 'nullable|string',
+
                 'lead_types'                        => 'required|array',
                 'lead_types.*.id'                   => 'required|integer',
                 'lead_types.*.daily_limit'          => 'nullable|integer',
@@ -197,8 +196,8 @@ class AgentController extends Controller
                 'lead_types.*.consent'              => 'nullable|string',
                 'lead_types.*.states'               => 'array|nullable',
                 'lead_types.*.carrier_type'         => 'array|nullable',
-                'lead_types.*.destination_location' => 'nullable|nullable',
-                'lead_types.*.destination_webhook'  => 'nullable|nullable',
+                'lead_types.*.destination_location' => 'nullable|string',
+                'lead_types.*.destination_webhook'  => 'nullable|string',
             ]);
 
             if ($validator->fails()) {
@@ -309,8 +308,8 @@ class AgentController extends Controller
                 'lead_types.*.consent'              => 'nullable|string',
                 'lead_types.*.states'               => 'array|nullable',
                 'lead_types.*.carrier_type'         => 'array|nullable',
-                'lead_types.*.destination_location' => 'nullable|nullable',
-                'lead_types.*.destination_webhook'  => 'nullable|nullable',
+                'lead_types.*.destination_location' => 'nullable|string',
+                'lead_types.*.destination_webhook'  => 'nullable|string',
             ]);
 
             if ($validator->fails()) {
