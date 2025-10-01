@@ -171,6 +171,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/assign-agent', [ReserveContactController::class, 'assignAgent']);
         //fro Searching
         Route::get('/search/agent/', [AgentController::class, 'searchAgentByAjax'])->name('agent.search');
+        Route::get('/search/locations/', [DashboardController::class, 'searchLocationByAjax'])->name('location.search');
         Route::get('/search/state/', [StateController::class, 'searchStateByAjax'])->name('state.search');
         Route::get('/search/campaign/', [CampaignController::class, 'searchCampaignByAjax'])->name('campaign.search');
         //for CustomField
