@@ -519,6 +519,9 @@ function getCarrierType($leadType = null)
             "Allwell",
             "American Health Advantage of Florida",
             "Florida Complete Care",
+            "Globe",
+            "United America",
+            "Essence",
         ],
 
     ];
