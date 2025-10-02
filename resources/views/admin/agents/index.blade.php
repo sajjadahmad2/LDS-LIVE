@@ -760,6 +760,7 @@
                         },
                         error: function(xhr) {
                             console.error(xhr.responseJSON.message);
+                            console.error(xhr.responseJSON.line);
                         },
                     });
                 }
