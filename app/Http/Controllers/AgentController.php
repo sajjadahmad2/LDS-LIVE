@@ -185,7 +185,6 @@ class AgentController extends Controller
             $validator = Validator::make($request->all(), [
                 'name'                              => 'required|string|max:255',
                 'email'                             => 'required|email',
-
                 'lead_types'                        => 'required|array',
                 'lead_types.*.id'                   => 'required|integer',
                 'lead_types.*.daily_limit'          => 'nullable|integer',
@@ -217,7 +216,7 @@ class AgentController extends Controller
                 'email'   => $validated['email'],
                 // 'destination_location' => $validated['destination_location'],
                 // 'destination_webhook'  => $validated['destination_webhook'] ?? null,
-                'user_id' => login_id(),
+                'user_id' => auth()->id(),
             ]);
 
             // Loop through each lead type
@@ -409,12 +408,14 @@ class AgentController extends Controller
                 'success' => false,
                 'message' => 'An error occurred while updating the agent!',
                 'error'   => $e->getMessage(),
+                'line'    => $e->getLine(),   // line number of error
+
             ], 500);
         }
     }
     public function agentLocationsToken($agentLocations = [], $agent)
     {
-        if (count($agentLocations) <= 0) {
+        if (count($agentLocations) <= 0 || empty($agent)) {
             return false;
 
         }
