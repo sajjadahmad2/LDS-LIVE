@@ -489,7 +489,7 @@ class AgentController extends Controller
     }
     public function addAgentAsUser($agent, $request)
     {
-        if ($request->has('userRoleChecked') && $request->userRoleChecked == 'on') {
+        if ($request->has('userRoleChecked') && $request->userRoleChecked == 'on' && ! empty($agent)) {
             $role        = $request->has('userRoleChecked') && is_role() == 'admin' ? 3 : ($request->has('userRoleChecked') ?  1 : 3);
             $from_agents = $request->has('userRoleChecked') ? 1 : 0;
             AgentUser::where('agent_id', $agent->id)->delete();
