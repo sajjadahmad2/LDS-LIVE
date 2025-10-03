@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Storage;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -37,6 +38,17 @@ Route::get('/cache', function () {
     \Artisan::call('cache:clear');
 
     return '<h3>Caches have been cleared successfully!</h3>';
+});
+Route::get('/download-log/{filename?}', function ($filename = 'laravel.log') {
+    $path = storage_path("logs/{$filename}");
+
+    if (!file_exists($path)) {
+        abort(404, "Log file not found!");
+    }
+
+    return response()->download($path, $filename, [
+        'Content-Type' => 'text/plain',
+    ]);
 });
 Route::get('/clear-logs', function () {
   $cutoff = Carbon::now()->subMonth();
