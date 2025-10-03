@@ -85,7 +85,7 @@ class ReserveContactController extends Controller
     {
         if ($request->ajax()) {
             try {
-                $data = Log::select(['id', 'contact_id', 'name', 'email', 'state', 'reason', 'message'])
+                $data = Log::select(['id', 'contact_id', 'name', 'email', 'state', 'reason'])
                     ->orderBy('id', 'desc');
 
                 return DataTables::of($data)
