@@ -619,7 +619,7 @@ function CreateContactData($data, $agent = null, $campaign, $json = true, $dbcon
         'date_of_birth'                               => isset($data['date_of_birth']) ? \Carbon\Carbon::parse($data['date_of_birth']) : null,
         'selected_plan_image'                         => $data['selected_plan_image'] ?? null,
         'contact_json'                                => $json ? $data['contact_json'] : base64_encode(json_encode($data)),
-        'lead_type'                                   => $leadTypeId ?? 1,
+        'lead_type'                                   => $leadTypeId ?? null,
     ];
     return $contactData;
 }

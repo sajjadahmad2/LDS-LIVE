@@ -49,7 +49,7 @@ class ProcessWebhookData implements ShouldQueue
 
         // Fetch campaign and agent details
         $mainCampaign = Campaign::find($campaign_id);
-        $leadTypeId = $mainCampaign->lead_type ?? 1;
+        $leadTypeId = $mainCampaign->lead_type ?? NULL;
         $agentIds     = CampaignAgent::where('campaign_id', $campaign_id)
             ->whereHas('agent.states', function ($query) use ($state, $leadTypeId) {
                 $query->whereHas('state', function ($q) use ($state) {
@@ -141,13 +141,13 @@ class ProcessWebhookData implements ShouldQueue
                 'agent' => function ($query) use ($currentMonth, $currentDate) {
                     $query->withCount([
                         'contacts as monthly_contacts_count' => function ($q) use ($currentMonth) {
-                            $q->where('status', 'Sent')->whereMonth('created_at', $currentMonth);
+                            $q->where('status', 'Sent')->where('lead_type', $leadTypeId)->whereMonth('created_at', $currentMonth);
                         },
                         'contacts as daily_contacts_count'   => function ($q) use ($currentDate) {
-                            $q->where('status', 'Sent')->whereDate('created_at', $currentDate);
+                            $q->where('status', 'Sent')->where('lead_type', $leadTypeId)->whereDate('created_at', $currentDate);
                         },
                         'contacts as total_contacts_count'   => function ($q) {
-                            $q->where('status', 'Sent');
+                            $q->where('status', 'Sent')->where('lead_type', $leadTypeId);
                         },
                     ]);
                 }, 'agent.agentLeadTypes' => function ($query) use ($leadTypeId) {
@@ -306,13 +306,13 @@ class ProcessWebhookData implements ShouldQueue
                 'agent' => function ($query) use ($currentMonth, $currentDate) {
                     $query->withCount([
                         'contacts as monthly_contacts_count' => function ($q) use ($currentMonth) {
-                            $q->where('status', 'Sent')->whereMonth('created_at', $currentMonth);
+                            $q->where('status', 'Sent')->where('lead_type', $leadTypeId)->whereMonth('created_at', $currentMonth);
                         },
                         'contacts as daily_contacts_count'   => function ($q) use ($currentDate) {
-                            $q->where('status', 'Sent')->whereDate('created_at', $currentDate);
+                            $q->where('status', 'Sent')->where('lead_type', $leadTypeId)->whereDate('created_at', $currentDate);
                         },
                         'contacts as total_contacts_count'   => function ($q) {
-                            $q->where('status', 'Sent');
+                            $q->where('status', 'Sent')->where('lead_type', $leadTypeId);
                         },
                     ]);
                 }, 'agent.agentLeadTypes' => function ($query) use ($leadTypeId) {

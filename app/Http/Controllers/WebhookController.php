@@ -217,7 +217,7 @@ class WebhookController extends Controller
     public function ContactWebhook($request, $camid = null, $lead_type = null)
     {
         //$leadTypeId = findLeadTypeId($lead_type);
-        $leadTypeId = Campaign::where('id', $camid)->first()->lead_type ?? 1;
+        $leadTypeId = Campaign::where('id', $camid)->first()->lead_type ?? NULL;
 
         $data = $request->all();
 
@@ -322,13 +322,13 @@ class WebhookController extends Controller
                 ->with(['agent' => function ($query) use ($currentMonth, $currentDate) {
                     $query->withCount([
                         'contacts as monthly_contacts_count' => function ($q) use ($currentMonth) {
-                            $q->where('status', 'Sent')->whereMonth('created_at', $currentMonth);
+                            $q->where('status', 'Sent')->where('lead_type', $leadTypeId)->whereMonth('created_at', $currentMonth);
                         },
                         'contacts as daily_contacts_count'   => function ($q) use ($currentDate) {
-                            $q->where('status', 'Sent')->whereDate('created_at', $currentDate);
+                            $q->where('status', 'Sent')->where('lead_type', $leadTypeId)->whereDate('created_at', $currentDate);
                         },
                         'contacts as total_contacts_count'   => function ($q) {
-                            $q->where('status', 'Sent');
+                            $q->where('status', 'Sent')->where('lead_type', $leadTypeId);
                         },
                     ]);
                 }, 'agent.agentLeadTypes' => function ($query) use ($leadTypeId) {
