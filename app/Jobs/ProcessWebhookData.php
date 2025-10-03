@@ -138,7 +138,7 @@ class ProcessWebhookData implements ShouldQueue
         $agents = CampaignAgent::whereIn('agent_id', $agentIds)
             ->where('agent_id', '!=', $originalAgentId) // exclude original agent
             ->with([
-                'agent' => function ($query) use ($currentMonth, $currentDate) {
+                'agent' => function ($query) use ($currentMonth, $currentDate,$leadTypeId) {
                     $query->withCount([
                         'contacts as monthly_contacts_count' => function ($q) use ($currentMonth) {
                             $q->where('status', 'Sent')->where('lead_type', $leadTypeId)->whereMonth('created_at', $currentMonth);
@@ -303,7 +303,7 @@ class ProcessWebhookData implements ShouldQueue
         return CampaignAgent::whereIn('agent_id', $agentIds)
         // ->where('agent_id', '!=', $originalAgentId) // exclude original agent
             ->with([
-                'agent' => function ($query) use ($currentMonth, $currentDate) {
+                'agent' => function ($query) use ($currentMonth, $currentDate,$leadTypeId) {
                     $query->withCount([
                         'contacts as monthly_contacts_count' => function ($q) use ($currentMonth) {
                             $q->where('status', 'Sent')->where('lead_type', $leadTypeId)->whereMonth('created_at', $currentMonth);
