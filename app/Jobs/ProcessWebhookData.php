@@ -185,7 +185,7 @@ class ProcessWebhookData implements ShouldQueue
         }
 
         appendJobLog($contact_id, 'All agents are at full capacity. Sent to reserve.');
-        $this->ReserveContact($webhookdata, null, $mainCampaign, 'All agents full, lead sent to reserve.');
+        $this->ReserveContact($webhookdata, null, $mainCampaign, 'All agents full, lead sent to reserve.',$leadTypeId);
     }
 
     /**
