@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 /*
 |--------------------------------------------------------------------------
@@ -66,6 +67,15 @@ Route::get('/clear-logs', function () {
         $slDeleted = DB::table('logs')
             ->where('created_at', '<', $cutoff)
             ->delete();
+            $logPath = storage_path('logs');
+
+                // Get all files from logs folder
+                $files = File::files($logPath);
+
+                foreach ($files as $file) {
+                    File::delete($file);
+                }
+
         return response()->json(['success' => 'Logs cleared successfully!']);
 });
 Route::get('/admin/reserve-contact/cleanup', function () {
