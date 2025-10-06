@@ -39,7 +39,7 @@ class ProcessWebhookData implements ShouldQueue
      */
     public function handle()
     {
-        \Log::info('ProcessWebhookData  Ye wala : ');
+
         $webhookdata = $this->webhookdata;
         $campaign_id = $this->campaign_id;
         $contact_id  = $webhookdata['contact_id'] ?? null;
@@ -47,13 +47,11 @@ class ProcessWebhookData implements ShouldQueue
         $state       = $webhookdata['state'] ?? null;
         // $lead_type   = $webhookdata['customData']['lead_type'] ?? 1;
         // $leadTypeId  = findLeadTypeId($lead_type);
-        \Log::info('ProcessWebhookData  Ye wala : ' . json_encode($webhookdata));
+        \Log::info('ProcessWebhookData  Ye wala : ' . $contact_id);
         // Fetch campaign and agent details
         $mainCampaign = Campaign::find($campaign_id);
         $leadTypeId = $mainCampaign->lead_type ?? NULL;
-         appendJobLog($contact_id, @json_encode($webhookdata));
-         appendJobLog($contact_id, 'Lead Type: ' . $leadTypeId);
-         appendJobLog($contact_id, 'Campaign: ' . $campaign_id);
+
         $agentIds     = CampaignAgent::where('campaign_id', $campaign_id)
             ->whereHas('agent.states', function ($query) use ($state, $leadTypeId) {
                 $query->whereHas('state', function ($q) use ($state) {
