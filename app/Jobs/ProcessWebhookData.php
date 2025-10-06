@@ -39,7 +39,7 @@ class ProcessWebhookData implements ShouldQueue
      */
     public function handle()
     {
-              \Log::info('ProcessWebhookData  Ye wala : ');
+        \Log::info('ProcessWebhookData  Ye wala : ');
         $webhookdata = $this->webhookdata;
         $campaign_id = $this->campaign_id;
         $contact_id  = $webhookdata['contact_id'] ?? null;
@@ -279,6 +279,7 @@ class ProcessWebhookData implements ShouldQueue
         if (! $proccessContact) {
             appendJobLog($contact_id, 'No contact found in ProccessContact table. Finding the best agent.');
             $agents = $this->getEligibleAgents($agentIds, $leadTypeId);
+            dd($agents);
             if ($agents->isEmpty()) {
                 appendJobLog($contact_id, 'No eligible agents found. Sent to reserve.');
                 $this->ReserveContact($webhookdata, null, $mainCampaign, 'No eligible agents found.');
