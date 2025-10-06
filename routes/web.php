@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
-use ZipArchive;
+
 use Illuminate\Support\Facades\Storage;
 /*
 |--------------------------------------------------------------------------
@@ -44,23 +44,21 @@ Route::get('/download-logs', function () {
     $logPath = storage_path('logs');
     $zipFile = storage_path('app/logs.zip');
 
-    // Remove old zip if it exists
     if (file_exists($zipFile)) {
         unlink($zipFile);
     }
 
-    $zip = new ZipArchive;
-    if ($zip->open($zipFile, ZipArchive::CREATE | ZipArchive::OVERWRITE) === true) {
+    $zip = new \ZipArchive();
+    if ($zip->open($zipFile, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
         $files = File::files($logPath);
 
         foreach ($files as $file) {
-            $relativeName = basename($file);
-            $zip->addFile($file, $relativeName);
+            $zip->addFile($file, basename($file));
         }
 
         $zip->close();
     } else {
-        abort(500, "Failed to create ZIP archive.");
+        abort(500, 'Failed to create ZIP archive.');
     }
 
     return response()->download($zipFile)->deleteFileAfterSend(true);
