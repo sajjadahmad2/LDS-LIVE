@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
-
+use ZipArchive;
 use Illuminate\Support\Facades\Storage;
 /*
 |--------------------------------------------------------------------------
@@ -40,16 +40,30 @@ Route::get('/cache', function () {
 
     return '<h3>Caches have been cleared successfully!</h3>';
 });
-Route::get('/download-log/{filename?}', function ($filename = 'laravel.log') {
-    $path = storage_path("logs/{$filename}");
+Route::get('/download-logs', function () {
+    $logPath = storage_path('logs');
+    $zipFile = storage_path('app/logs.zip');
 
-    if (!file_exists($path)) {
-        abort(404, "Log file not found!");
+    // Remove old zip if it exists
+    if (file_exists($zipFile)) {
+        unlink($zipFile);
     }
 
-    return response()->download($path, $filename, [
-        'Content-Type' => 'text/plain',
-    ]);
+    $zip = new ZipArchive;
+    if ($zip->open($zipFile, ZipArchive::CREATE | ZipArchive::OVERWRITE) === true) {
+        $files = File::files($logPath);
+
+        foreach ($files as $file) {
+            $relativeName = basename($file);
+            $zip->addFile($file, $relativeName);
+        }
+
+        $zip->close();
+    } else {
+        abort(500, "Failed to create ZIP archive.");
+    }
+
+    return response()->download($zipFile)->deleteFileAfterSend(true);
 });
 Route::get('/clear-logs', function () {
   $cutoff = Carbon::now()->subMonth();
