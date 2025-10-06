@@ -50,6 +50,7 @@ class ProcessWebhookData implements ShouldQueue
         // Fetch campaign and agent details
         $mainCampaign = Campaign::find($campaign_id);
         $leadTypeId = $mainCampaign->lead_type ?? NULL;
+          dd($this->webhookdata, $this->campaign_id,$leadTypeId);
         $agentIds     = CampaignAgent::where('campaign_id', $campaign_id)
             ->whereHas('agent.states', function ($query) use ($state, $leadTypeId) {
                 $query->whereHas('state', function ($q) use ($state) {
