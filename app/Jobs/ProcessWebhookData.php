@@ -144,13 +144,13 @@ class ProcessWebhookData implements ShouldQueue
             ->with([
                 'agent' => function ($query) use ($currentMonth, $currentDate,$leadTypeId) {
                     $query->withCount([
-                        'contacts as monthly_contacts_count' => function ($q) use ($currentMonth) {
+                        'contacts as monthly_contacts_count' => function ($q) use ($currentMonth,$leadTypeId) {
                             $q->where('status', 'Sent')->where('lead_type', $leadTypeId)->whereMonth('created_at', $currentMonth);
                         },
-                        'contacts as daily_contacts_count'   => function ($q) use ($currentDate) {
+                        'contacts as daily_contacts_count'   => function ($q) use ($currentDate,$leadTypeId) {
                             $q->where('status', 'Sent')->where('lead_type', $leadTypeId)->whereDate('created_at', $currentDate);
                         },
-                        'contacts as total_contacts_count'   => function ($q) {
+                        'contacts as total_contacts_count'   => function ($q)use($leadTypeId) {
                             $q->where('status', 'Sent')->where('lead_type', $leadTypeId);
                         },
                     ]);
@@ -279,7 +279,7 @@ class ProcessWebhookData implements ShouldQueue
         if (! $proccessContact) {
             appendJobLog($contact_id, 'No contact found in ProccessContact table. Finding the best agent.');
             $agents = $this->getEligibleAgents($agentIds, $leadTypeId);
-            dd($agents);
+
             if ($agents->isEmpty()) {
                 appendJobLog($contact_id, 'No eligible agents found. Sent to reserve.');
                 $this->ReserveContact($webhookdata, null, $mainCampaign, 'No eligible agents found.');
@@ -310,13 +310,13 @@ class ProcessWebhookData implements ShouldQueue
             ->with([
                 'agent' => function ($query) use ($currentMonth, $currentDate,$leadTypeId) {
                     $query->withCount([
-                        'contacts as monthly_contacts_count' => function ($q) use ($currentMonth) {
+                        'contacts as monthly_contacts_count' => function ($q) use ($currentMonth,$leadTypeId) {
                             $q->where('status', 'Sent')->where('lead_type', $leadTypeId)->whereMonth('created_at', $currentMonth);
                         },
-                        'contacts as daily_contacts_count'   => function ($q) use ($currentDate) {
+                        'contacts as daily_contacts_count'   => function ($q) use ($currentDate,$leadTypeId) {
                             $q->where('status', 'Sent')->where('lead_type', $leadTypeId)->whereDate('created_at', $currentDate);
                         },
-                        'contacts as total_contacts_count'   => function ($q) {
+                        'contacts as total_contacts_count'   => function ($q) use ($leadTypeId){
                             $q->where('status', 'Sent')->where('lead_type', $leadTypeId);
                         },
                     ]);
