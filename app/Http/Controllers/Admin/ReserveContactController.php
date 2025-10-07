@@ -56,7 +56,7 @@ class ReserveContactController extends Controller
                         $query->whereBetween('created_at', [$start, $end]);
                     }
                 }
-                dd($query->get());
+
                 return DataTables::of($query)
                     ->addIndexColumn()
                     ->editColumn('first_name', fn($row) => $row->first_name . ' ' . $row->last_name)
@@ -65,12 +65,21 @@ class ReserveContactController extends Controller
                         return optional($row->campaign)->campaign_name;
                     })
                     ->addColumn('action', function ($row) {
-                        return '<button type="button" class="btn btn-primary"
-                        data-bs-toggle="modal"
-                        data-bs-target="#userModal"
-                        onclick="savaData(\'' . $row->id . '\', \'' . $row->first_name . '\', \'' . $row->email . '\', \'' . $row->state . '\' ,\'' . $row->lead_type ?? optional($row->campaign)->lead_type .'\')">Send</button>';
+                        $leadType = $row->lead_type ?? optional($row->campaign)->lead_type;
+
+                        return '<button type="button" class="btn btn-primary btn-sm"
+                            data-bs-toggle="modal"
+                            data-bs-target="#userModal"
+                            onclick="savaData(
+                                \'' . e($row->id) . '\',
+                                \'' . e($row->first_name) . '\',
+                                \'' . e($row->email) . '\',
+                                \'' . e($row->state) . '\',
+                                \'' . e($leadType) . '\'
+                            )">Send</button>';
                     })
-                    ->rawColumns(['action'])
+                    ->rawColumns(['action']);
+
                     ->make(true);
             } catch (\Exception $e) {
                 return response()->json([
