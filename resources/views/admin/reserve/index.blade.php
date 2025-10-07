@@ -278,7 +278,7 @@
             let formData = {
                 agent_id: $("#agents").val(), // Get selected agent
                 lead_id: $("#agents").find(":selected").data("lead"),
-                lead_type_id:$("#agents").find(":selected").data("leadtypeId"),
+                lead_type_id:$("#agents").find(":selected").data("leadtypeid"),
                 _token: $('input[name="_token"]').val() // Get CSRF token
             };
 
