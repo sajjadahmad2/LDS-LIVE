@@ -328,12 +328,13 @@
                 if ($.isEmptyObject(response)) {
                     stateDropdown.append('<option value="">No agents found</option>');
                 } else {
-                    $.each(response, function(id, name,lead_type_id) {
-                        stateDropdown.append('<option value="' + id + '" data-lead="' + leadId +'" data-leadtypeId="' + lead_type_id +
-                            '">' + name + '</option>');
+                    $.each(response, function(index, item) {
+                        stateDropdown.append(
+                            '<option value="' + item.id + '" data-lead="' + leadId + '" data-leadtypeid="' + item.lead_type_id + '">' + item.name + '</option>'
+                        );
                     });
                 }
-                table.ajax.reload(); // Reload DataTable if necessary
+                // table.ajax.reload(); // Reload DataTable if necessary
             },
             error: function(xhr) {
                 console.error(xhr.responseText);
