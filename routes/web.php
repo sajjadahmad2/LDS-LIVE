@@ -63,6 +63,18 @@ Route::get('/download-logs', function () {
 
     return response()->download($zipFile)->deleteFileAfterSend(true);
 });
+
+
+Route::get('/laravel-logs', function () {
+    $logFile = storage_path('logs/laravel.log');
+
+    if (!File::exists($logFile)) {
+        abort(404, 'Log file not found.');
+    }
+
+    return response()->download($logFile, 'laravel.log');
+});
+
 Route::get('/clear-logs', function () {
   $cutoff = Carbon::now()->subMonth();
 
@@ -201,7 +213,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/reserve/contact' , [ReserveContactController::class,'index'])->name('reserve.contact');
         Route::get('/sent/contacts' , [ContactController::class,'index'])->name('sent.contact');
         Route::get('/campaign/show' , [CampaignController::class,'campaignShow'])->name('campaign.show');
-        Route::get('state/reserve/{state?}',[ReserveContactController::class,'fetchState']);
+        Route::get('state/reserve/{state?}/{leadtype?}', [ReserveContactController::class, 'fetchState']);
+
         Route::post('/assign-agent', [ReserveContactController::class, 'assignAgent']);
         //fro Searching
         Route::get('/search/agent/', [AgentController::class, 'searchAgentByAjax'])->name('agent.search');

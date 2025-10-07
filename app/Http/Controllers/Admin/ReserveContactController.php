@@ -104,16 +104,17 @@ class ReserveContactController extends Controller
         return view('admin.log');
     }
 
-    public function fetchState($state = null)
-    {
-        //dd($state);
-        $agents = Agent::whereHas('states', function ($query) use ($state) {
-            $query->where(DB::raw('TRIM(LOWER(state))'), strtolower(trim($state)))
-                ->orWhere(DB::raw('TRIM(LOWER(short_form))'), strtolower(trim($state)));
-        })->pluck('name', 'id'); // Fetch only `id` and `name`
-                                 //dd($agents);
-        return response()->json($agents);
-    }
+        public function fetchState($state = null)
+        {
+            $agents = Agent::whereHas('states', function ($query) use ($state) {
+                $query->whereHas('state', function ($q) use ($state) {
+                    $q->where(DB::raw('TRIM(LOWER(state))'), strtolower(trim($state)))
+                    ->orWhere(DB::raw('TRIM(LOWER(short_form))'), strtolower(trim($state)));
+                });
+            })->pluck('name', 'id');
+
+            return response()->json($agents);
+        }
 
     public function assignAgent(Request $request)
     {
