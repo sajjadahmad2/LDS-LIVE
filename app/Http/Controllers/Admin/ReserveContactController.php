@@ -78,7 +78,7 @@ class ReserveContactController extends Controller
                                 \'' . e($leadType) . '\'
                             )">Send</button>';
                     })
-                    ->rawColumns(['action']);
+                    ->rawColumns(['action'])
 
                     ->make(true);
             } catch (\Exception $e) {
