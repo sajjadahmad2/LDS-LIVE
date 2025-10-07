@@ -200,7 +200,9 @@ class ReserveContactController extends Controller
             $campaign = Campaign::whereHas('agents', function ($query) use ($agent) {
                 $query->where(DB::raw('TRIM(LOWER(name))'), strtolower(trim($agent->name)));
             })->first();
-
+        if (! $campaign) {
+            return response()->json(['message' => 'Campaign not found!'], 404);
+        }
         // Fetch and decode contact data
         $reserveContact = ReserveContact::select('contact_json')->find($leadId);
         if (! $reserveContact) {
@@ -213,7 +215,7 @@ class ReserveContactController extends Controller
 
         appendJobLog($reserveContact['contact_id'], 'Again Sent From ResevereContact');
 
-        ProcessWebhookData::dispatch($reserveContact , $campaignId,true, $agent);
+        ProcessWebhookData::dispatch($reserveContact ,$campaign->id,true, $agent);
         // $processContact = new ProccessContactServices();
         // $processContact->handleProccessContact($reserveContact, $agent, $campaign);
 
