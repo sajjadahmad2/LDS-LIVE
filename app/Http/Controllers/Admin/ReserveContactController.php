@@ -213,7 +213,7 @@ class ReserveContactController extends Controller
 
         appendJobLog($reserveContact['contact_id'], 'Again Sent From ResevereContact');
 
-        ProcessWebhookData::dispatch($data, $campaignId,true, $agent);
+        ProcessWebhookData::dispatch($reserveContact , $campaignId,true, $agent);
         // $processContact = new ProccessContactServices();
         // $processContact->handleProccessContact($reserveContact, $agent, $campaign);
 
