@@ -29,11 +29,12 @@ class ReserveContactController extends Controller
                     'city',
                     'postal_code',
                     'state',
+                    'lead_type',
                     'reason',
                     'created_at',
                     'campaign_id'
                 )
-                    ->with(['campaign:id,campaign_name'])
+                    ->with(['campaign:id,campaign_name,lead_type'])
                     ->where('status', 'Not Sent');
 
                 // Filter: State
@@ -68,7 +69,7 @@ class ReserveContactController extends Controller
                         return '<button type="button" class="btn btn-primary"
                         data-bs-toggle="modal"
                         data-bs-target="#userModal"
-                        onclick="savaData(\'' . $row->id . '\', \'' . $row->first_name . '\', \'' . $row->email . '\', \'' . $row->state . '\' ,\'' . $row->lead_type . '\')">Send</button>';
+                        onclick="savaData(\'' . $row->id . '\', \'' . $row->first_name . '\', \'' . $row->email . '\', \'' . $row->state . '\' ,\'' . $row->lead_type ?? optional($row->campaign)->lead_type .'\')">Send</button>';
                     })
                     ->rawColumns(['action'])
                     ->make(true);
