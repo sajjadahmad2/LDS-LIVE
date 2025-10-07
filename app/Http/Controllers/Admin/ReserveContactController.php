@@ -68,7 +68,7 @@ class ReserveContactController extends Controller
                         return '<button type="button" class="btn btn-primary"
                         data-bs-toggle="modal"
                         data-bs-target="#userModal"
-                        onclick="savaData(\'' . $row->id . '\', \'' . $row->first_name . '\', \'' . $row->email . '\', \'' . $row->state . '\')">Send</button>';
+                        onclick="savaData(\'' . $row->id . '\', \'' . $row->first_name . '\', \'' . $row->email . '\', \'' . $row->state . '\' ,\'' . $row->lead_type . '\')">Send</button>';
                     })
                     ->rawColumns(['action'])
                     ->make(true);
@@ -103,18 +103,22 @@ class ReserveContactController extends Controller
 
         return view('admin.log');
     }
+            public function fetchState($state = null, $leadTypeId = null)
+            {
+                $agents = Agent::whereHas('states', function ($query) use ($state) {
+                    $query->whereHas('state', function ($q) use ($state) {
+                        $q->where(DB::raw('TRIM(LOWER(state))'), strtolower(trim($state)))
+                        ->orWhere(DB::raw('TRIM(LOWER(short_form))'), strtolower(trim($state)));
+                    });
+                })
+                ->whereHas('agentLeadTypes', function ($query) use ($leadTypeId) {
+                    $query->where('lead_type', $leadTypeId);
+                })
+                ->pluck('name', 'id');
 
-        public function fetchState($state = null)
-        {
-            $agents = Agent::whereHas('states', function ($query) use ($state) {
-                $query->whereHas('state', function ($q) use ($state) {
-                    $q->where(DB::raw('TRIM(LOWER(state))'), strtolower(trim($state)))
-                    ->orWhere(DB::raw('TRIM(LOWER(short_form))'), strtolower(trim($state)));
-                });
-            })->pluck('name', 'id');
+                return response()->json($agents);
+            }
 
-            return response()->json($agents);
-        }
 
     public function assignAgent(Request $request)
     {
