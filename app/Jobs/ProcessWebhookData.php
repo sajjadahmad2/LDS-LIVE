@@ -23,12 +23,12 @@ class ProcessWebhookData implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    protected $webhookdata, $campaign_id,$fromreserve=false;
+    protected $webhookdata, $campaign_id,$fromreserve=false,$agent=null;
 
     /**
      * Create a new job instance.
      */
-    public function __construct($webhookdata, $campaign_id,$fromreserve ,$agent = null)
+    public function __construct($webhookdata, $campaign_id,$fromreserve ,$agent)
     {
         $this->webhookdata = $webhookdata;
         $this->campaign_id = $campaign_id;
