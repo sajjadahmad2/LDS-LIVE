@@ -8,6 +8,8 @@ use App\Models\Contact;
 use App\Models\State;
 use App\Models\Log;
 use App\Models\ReserveContact;
+use App\Jobs\ProcessWebhookData;
+use App\Jobs\ProcessWebhookDataLead;
 use App\Services\ProccessContactServices;
 use Carbon\Carbon;
 use DB;
@@ -112,9 +114,9 @@ class ReserveContactController extends Controller
 
         return view('admin.log');
     }
-            public function fetchState($state = null, $leadTypeId = null)
-            {
-                $agents = Agent::whereHas('states', function ($query) use ($state) {
+        public function fetchState($state = null, $leadTypeId = null)
+        {
+            $agents = Agent::whereHas('states', function ($query) use ($state) {
                     $query->whereHas('state', function ($q) use ($state) {
                         $q->where(DB::raw('TRIM(LOWER(state))'), strtolower(trim($state)))
                         ->orWhere(DB::raw('TRIM(LOWER(short_form))'), strtolower(trim($state)));
@@ -123,55 +125,81 @@ class ReserveContactController extends Controller
                 ->whereHas('agentLeadTypes', function ($query) use ($leadTypeId) {
                     $query->where('lead_type', $leadTypeId);
                 })
-                ->pluck('name', 'id');
+                ->with(['agentLeadTypes' => function ($q) use ($leadTypeId) {
+                    $q->select('agent_id', 'lead_type')
+                    ->where('lead_type', $leadTypeId);
+                }])
+                ->get(['id', 'name']);
 
-                return response()->json($agents);
-            }
+            // Format data to include lead_type_id
+            $formatted = $agents->map(function ($agent) {
+                return [
+                    'id' => $agent->id,
+                    'name' => $agent->name,
+                    'lead_type_id' => optional($agent->agentLeadTypes->first())->lead_type,
+                ];
+            });
+
+            return response()->json($formatted);
+        }
 
 
     public function assignAgent(Request $request)
     {
-        $agentId = $request->agent_id;
-        $leadId  = $request->lead_id;
+            $agentId    = $request->agent_id;
+            $leadId     = $request->lead_id;
+            $leadTypeId = $request->lead_type_id;
 
-        // Fetch the agent
-        $agent = Agent::where('id', $agentId)->first();
-        if (! $agent) {
-            return response()->json(['message' => 'Agent not found!'], 404);
-        }
+            // 1️⃣ Validate Agent
+            $agent = Agent::with(['agentLeadTypes' => function ($q) use ($leadTypeId) {
+                $q->where('lead_type', $leadTypeId);
+            }])->find($agentId);
 
-        // Fetch agent's assigned campaign
-        $campaign = Campaign::whereHas('agents', function ($query) use ($agent) {
-            $query->where(DB::raw('TRIM(LOWER(name))'), strtolower(trim($agent->name)));
-        })->first();
+            if (! $agent) {
+                return response()->json(['message' => 'Agent not found!'], 404);
+            }
 
-        // Get current date and month in America/Chicago timezone
-        $currentDate  = Carbon::now('America/Chicago')->format('Y-m-d');
-        $currentMonth = Carbon::now('America/Chicago')->month;
+            $agentLeadType = $agent->agentLeadTypes->first();
+            if (! $agentLeadType) {
+                return response()->json(['message' => 'Agent not assigned to this lead type!'], 404);
+            }
 
-        // Count agent's assigned contacts
-        $dailyCount = Contact::where('agent_id', $agentId)
-            ->whereDate('created_at', $currentDate)
-            ->count();
+            // 2️⃣ Get current date/month in America/Chicago timezone
+            $currentDate  = Carbon::now('America/Chicago')->format('Y-m-d');
+            $currentMonth = Carbon::now('America/Chicago')->month;
 
-        $monthlyCount = Contact::where('agent_id', $agentId)
-            ->whereMonth('created_at', $currentMonth)
-            ->count();
+            // 3️⃣ Count contacts for this agent *and* lead type
+            $dailyCount = Contact::where('agent_id', $agentId)
+                ->where('lead_type', $leadTypeId)
+                ->whereDate('created_at', $currentDate)
+                ->count();
 
-        $totalCount = Contact::where('agent_id', $agentId)->count();
+            $monthlyCount = Contact::where('agent_id', $agentId)
+                ->where('lead_type', $leadTypeId)
+                ->whereMonth('created_at', $currentMonth)
+                ->count();
 
-        // Check if agent's limits are exceeded
-        if ($dailyCount >= $agent->daily_limit) {
-            return response()->json(['message' => 'Daily limit reached for this agent.'], 403);
-        }
+            $totalCount = Contact::where('agent_id', $agentId)
+                ->where('lead_type', $leadTypeId)
+                ->count();
 
-        if ($monthlyCount >= $agent->monthly_limit) {
-            return response()->json(['message' => 'Monthly limit reached for this agent.'], 403);
-        }
+            // 4️⃣ Check limits from `agent_lead_types`
+            if ($agentLeadType->daily_limit && $dailyCount >= $agentLeadType->daily_limit) {
+                return response()->json(['message' => 'Daily limit reached for this agent and lead type.'], 403);
+            }
 
-        if ($totalCount >= $agent->total_limit) {
-            return response()->json(['message' => 'Total contact limit reached for this agent.'], 403);
-        }
+            if ($agentLeadType->monthly_limit && $monthlyCount >= $agentLeadType->monthly_limit) {
+                return response()->json(['message' => 'Monthly limit reached for this agent and lead type.'], 403);
+            }
+
+            if ($agentLeadType->total_limit && $totalCount >= $agentLeadType->total_limit) {
+                return response()->json(['message' => 'Total contact limit reached for this agent and lead type.'], 403);
+            }
+
+            // 5️⃣ Optionally fetch related campaign for this agent (optional)
+            $campaign = Campaign::whereHas('agents', function ($query) use ($agent) {
+                $query->where(DB::raw('TRIM(LOWER(name))'), strtolower(trim($agent->name)));
+            })->first();
 
         // Fetch and decode contact data
         $reserveContact = ReserveContact::select('contact_json')->find($leadId);
@@ -182,9 +210,13 @@ class ReserveContactController extends Controller
         $reserveContact = json_decode(base64_decode($reserveContact->contact_json), true);
 
         // Process contact
-        $processContact = new ProccessContactServices();
-        $processContact->handleProccessContact($reserveContact, $agent, $campaign);
 
-        return response()->json(['message' => 'Agent assigned successfully!']);
+        appendJobLog($reserveContact['contact_id'], 'Again Sent From ResevereContact');
+
+        ProcessWebhookData::dispatch($data, $campaignId);
+        // $processContact = new ProccessContactServices();
+        // $processContact->handleProccessContact($reserveContact, $agent, $campaign);
+
+        return response()->json(['message' => 'Lead added to the Queue successfully!']);
     }
 }

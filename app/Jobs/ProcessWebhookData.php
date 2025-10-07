@@ -23,15 +23,17 @@ class ProcessWebhookData implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    protected $webhookdata, $campaign_id;
+    protected $webhookdata, $campaign_id,$fromreserve=false;
 
     /**
      * Create a new job instance.
      */
-    public function __construct($webhookdata, $campaign_id)
+    public function __construct($webhookdata, $campaign_id,$fromreserve ,$agent = null)
     {
         $this->webhookdata = $webhookdata;
         $this->campaign_id = $campaign_id;
+        $this->fromreserve = $fromreserve;
+        $this->agent = $agent;
     }
 
     /**
@@ -42,6 +44,8 @@ class ProcessWebhookData implements ShouldQueue
 
         $webhookdata = $this->webhookdata;
         $campaign_id = $this->campaign_id;
+        $fromreserve = $this->fromreserve;
+        $selectedAgent = $this->agent;
         $contact_id  = $webhookdata['contact_id'] ?? null;
         $email       = $webhookdata['email'] ?? null;
         $state       = $webhookdata['state'] ?? null;
@@ -51,7 +55,10 @@ class ProcessWebhookData implements ShouldQueue
         // Fetch campaign and agent details
         $mainCampaign = Campaign::find($campaign_id);
         $leadTypeId = $mainCampaign->lead_type ?? NULL;
+        if($fromreserve){
+            $this->ProccessContact($webhookdata,$selectedAgent,$mainCampaign,$leadTypeId);
 
+        }
         $agentIds     = CampaignAgent::where('campaign_id', $campaign_id)
             ->whereHas('agent.states', function ($query) use ($state, $leadTypeId) {
                 $query->whereHas('state', function ($q) use ($state) {
@@ -426,6 +433,10 @@ class ProcessWebhookData implements ShouldQueue
             if ($response && property_exists($response, 'contact')) {
                 $contact->status = 'Sent';
                 $contact->save();
+                $reserveContact = ReserveContact::where('email', $contact->email)->first();
+                if ($reserveContact) {
+                    $reserveContact->delete();
+                }
                 appendJobLog($contact->contact_id, 'Contact sent Successfully to that agent  : ' . $agent->id . 'and the location id: ' . $agent->agentLeadTypes->first()->destination_location ?? '');
 
             } else {

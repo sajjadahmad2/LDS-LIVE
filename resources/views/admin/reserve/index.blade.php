@@ -327,8 +327,8 @@
                 if ($.isEmptyObject(response)) {
                     stateDropdown.append('<option value="">No agents found</option>');
                 } else {
-                    $.each(response, function(id, name) {
-                        stateDropdown.append('<option value="' + id + '" data-lead="' + leadId +
+                    $.each(response, function(id, name,, lead_type_id) {
+                        stateDropdown.append('<option value="' + id + '" data-lead="' + leadId +'" data-leadtypeId="' + lead_type_id +
                             '">' + name + '</option>');
                     });
                 }
