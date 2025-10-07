@@ -29,7 +29,6 @@ class ReserveContactController extends Controller
                     'city',
                     'postal_code',
                     'state',
-
                     'reason',
                     'created_at',
                     'campaign_id'
@@ -57,7 +56,7 @@ class ReserveContactController extends Controller
                         $query->whereBetween('created_at', [$start, $end]);
                     }
                 }
-
+                dd($query->get());
                 return DataTables::of($query)
                     ->addIndexColumn()
                     ->editColumn('first_name', fn($row) => $row->first_name . ' ' . $row->last_name)
