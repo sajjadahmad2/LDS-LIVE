@@ -200,6 +200,11 @@
 
                     },
                     {
+                        data: 'lead_type',
+                        name: 'lead_type',
+
+                    },
+                    {
                         data: 'reason',
                         name: 'reason',
                     },
