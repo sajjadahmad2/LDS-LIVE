@@ -57,7 +57,7 @@ class ProcessWebhookData implements ShouldQueue
         $leadTypeId = $mainCampaign->lead_type ?? NULL;
         if($fromreserve){
             $this->ProccessContact($webhookdata,$selectedAgent,$mainCampaign,$leadTypeId);
-
+            return;
         }
         $agentIds     = CampaignAgent::where('campaign_id', $campaign_id)
             ->whereHas('agent.states', function ($query) use ($state, $leadTypeId) {
