@@ -7,6 +7,7 @@ use App\Models\AgentLeadType;
 use App\Models\AgentState;
 use App\Models\AgentUser;
 use App\Models\CampaignAgent;
+use App\Models\Campaign;
 use App\Models\CompanyLocation;
 use App\Models\CustomField;
 use App\Models\GhlAuth;
@@ -633,7 +634,7 @@ class AgentController extends Controller
                 ->format('Y-m-d H:i:s');
         }
         $data = null;
-
+        $leadTypeId=1;
         if ($type === "agent" || $type === 'campaign') {
             if ($campaignId == null && $agentId == 'all') {
                 return response()->json([
@@ -646,7 +647,10 @@ class AgentController extends Controller
             }
             if (! is_null($campaignId) && $campaignId !== 'all') {
                 // This block runs only if $campaignId is NOT null and NOT 'all'
-
+                $campaign=Campaign::where('id', $campaignId)->first();
+                if($campaign){
+                    $leadTypeId=$campaign->lead_type;
+                }
                 $agentId = CampaignAgent::where('campaign_id', $campaignId)->pluck('agent_id')->toArray();
             } else {
                 $aid       = $agentId;
@@ -654,43 +658,97 @@ class AgentController extends Controller
                 $agentId[] = $aid;
             }
 
+            // $query = Agent::select(
+            //     'agents.id',
+            //     'agents.priority',
+            //     'agents.daily_limit',
+            //     'agents.monthly_limit',
+            //     'agents.total_limit',
+            //     'agents.name',
+            //     DB::raw('(SELECT COUNT(*) FROM contacts WHERE contacts.agent_id = agents.id AND MONTH(contacts.created_at) = MONTH(CURRENT_DATE)) as monthly_contacts_count'),
+            //     DB::raw('(SELECT COUNT(*) FROM contacts WHERE contacts.agent_id = agents.id AND DATE(contacts.created_at) = CURRENT_DATE) as daily_contacts_count'),
+            //     DB::raw('(SELECT COUNT(*) FROM contacts WHERE contacts.agent_id = agents.id' . (
+            //         ! empty($startDate) && ! empty($endDate)
+            //             ? ' AND contacts.created_at BETWEEN "' . $startDate . '" AND "' . $endDate . '"'
+            //             : ''
+            //     ) . ') as total_contacts_count')
+            // )
+            //     ->whereIn('agents.id', $agentId)
+            //     ->groupBy(
+            //         'agents.id',
+            //         'agents.priority',
+            //         'agents.daily_limit',
+            //         'agents.monthly_limit',
+            //         'agents.total_limit',
+            //         'agents.name'
+            //     )
+            //     ->orderBy('agents.priority', 'asc')
+            //     ->orderByRaw('(agents.monthly_limit - monthly_contacts_count) desc')
+            //     ->orderByRaw('(agents.daily_limit - daily_contacts_count) desc')
+            //     ->orderByRaw('(agents.total_limit - total_contacts_count) desc');
+
+            // $data = $query->get();
+
+            // $data = $query
+            //     ->orderBy('agents.priority', 'asc')
+            //     ->orderByRaw('(agents.monthly_limit - monthly_contacts_count) desc')
+            //     ->orderByRaw('(agents.daily_limit - daily_contacts_count) desc')
+            //     ->orderByRaw('(agents.total_limit - total_contacts_count) desc')
+            //     ->get();
             $query = Agent::select(
                 'agents.id',
-                'agents.priority',
-                'agents.daily_limit',
-                'agents.monthly_limit',
-                'agents.total_limit',
                 'agents.name',
-                DB::raw('(SELECT COUNT(*) FROM contacts WHERE contacts.agent_id = agents.id AND MONTH(contacts.created_at) = MONTH(CURRENT_DATE)) as monthly_contacts_count'),
-                DB::raw('(SELECT COUNT(*) FROM contacts WHERE contacts.agent_id = agents.id AND DATE(contacts.created_at) = CURRENT_DATE) as daily_contacts_count'),
-                DB::raw('(SELECT COUNT(*) FROM contacts WHERE contacts.agent_id = agents.id' . (
-                    ! empty($startDate) && ! empty($endDate)
-                        ? ' AND contacts.created_at BETWEEN "' . $startDate . '" AND "' . $endDate . '"'
-                        : ''
-                ) . ') as total_contacts_count')
+                'campaign_agents.priority',
+                'agent_lead_types.daily_limit',
+                'agent_lead_types.monthly_limit',
+                'agent_lead_types.total_limit',
+                DB::raw('(
+                    SELECT COUNT(*)
+                    FROM contacts
+                    WHERE contacts.agent_id = agents.id
+                    AND contacts.lead_type = ' . (int) $leadTypeId . '
+                    AND MONTH(contacts.created_at) = MONTH(CURRENT_DATE)
+                ) as monthly_contacts_count'),
+                DB::raw('(
+                    SELECT COUNT(*)
+                    FROM contacts
+                    WHERE contacts.agent_id = agents.id
+                    AND contacts.lead_type = ' . (int) $leadTypeId . '
+                    AND DATE(contacts.created_at) = CURRENT_DATE
+                ) as daily_contacts_count'),
+                DB::raw('(
+                    SELECT COUNT(*)
+                    FROM contacts
+                    WHERE contacts.agent_id = agents.id
+                    AND contacts.lead_type = ' . (int) $leadTypeId . '
+                    ' . (
+                        ! empty($startDate) && ! empty($endDate)
+                            ? ' AND contacts.created_at BETWEEN "' . $startDate . '" AND "' . $endDate . '"'
+                            : ''
+                    ) . '
+                ) as total_contacts_count')
             )
-                ->whereIn('agents.id', $agentId)
-                ->groupBy(
-                    'agents.id',
-                    'agents.priority',
-                    'agents.daily_limit',
-                    'agents.monthly_limit',
-                    'agents.total_limit',
-                    'agents.name'
-                )
-                ->orderBy('agents.priority', 'asc')
-                ->orderByRaw('(agents.monthly_limit - monthly_contacts_count) desc')
-                ->orderByRaw('(agents.daily_limit - daily_contacts_count) desc')
-                ->orderByRaw('(agents.total_limit - total_contacts_count) desc');
+            ->join('campaign_agents', 'campaign_agents.agent_id', '=', 'agents.id')
+            ->join('agent_lead_types', function ($join) use ($leadTypeId) {
+                $join->on('agent_lead_types.agent_id', '=', 'agents.id')
+                    ->where('agent_lead_types.lead_type', '=', $leadTypeId);
+            })
+            ->whereIn('agents.id', $agentId)
+            ->groupBy(
+                'agents.id',
+                'agents.name',
+                'campaign_agents.priority',
+                'agent_lead_types.daily_limit',
+                'agent_lead_types.monthly_limit',
+                'agent_lead_types.total_limit'
+            )
+            ->orderBy('campaign_agents.priority', 'asc')
+            ->orderByRaw('(agent_lead_types.monthly_limit - monthly_contacts_count) desc')
+            ->orderByRaw('(agent_lead_types.daily_limit - daily_contacts_count) desc')
+            ->orderByRaw('(agent_lead_types.total_limit - total_contacts_count) desc');
 
             $data = $query->get();
 
-            $data = $query
-                ->orderBy('agents.priority', 'asc')
-                ->orderByRaw('(agents.monthly_limit - monthly_contacts_count) desc')
-                ->orderByRaw('(agents.daily_limit - daily_contacts_count) desc')
-                ->orderByRaw('(agents.total_limit - total_contacts_count) desc')
-                ->get();
         }
 
         return response()->json([
