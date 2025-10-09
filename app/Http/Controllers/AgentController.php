@@ -716,17 +716,18 @@ class AgentController extends Controller
                     AND contacts.lead_type = ' . (int) $leadTypeId . '
                     AND DATE(contacts.created_at) = CURRENT_DATE
                 ) as daily_contacts_count'),
-                DB::raw('(
-                    SELECT COUNT(*)
-                    FROM contacts
-                    WHERE contacts.agent_id = agents.id
-                    AND contacts.lead_type = ' . (int) $leadTypeId . '
-                    ' . (
-                        ! empty($startDate) && ! empty($endDate)
-                            ? ' AND contacts.created_at BETWEEN "' . $startDate . '" AND "' . $endDate . '"'
-                            : ''
-                    ) . '
-                ) as total_contacts_count')
+            DB::raw('(
+                SELECT COUNT(*)
+                FROM contacts
+                WHERE contacts.agent_id = agents.id
+                AND (contacts.lead_type_id = ' . (int) $leadTypeId . ')
+                ' . (
+                    ! empty($startDate) && ! empty($endDate)
+                        ? ' AND contacts.created_at BETWEEN "' . $startDate . '" AND "' . $endDate . '"'
+                        : ''
+                ) . '
+            ) as total_contacts_count')
+
             )
             ->join('campaign_agents', 'campaign_agents.agent_id', '=', 'agents.id')
             ->join('agent_lead_types', function ($join) use ($leadTypeId) {
