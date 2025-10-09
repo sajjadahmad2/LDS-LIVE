@@ -720,7 +720,7 @@ class AgentController extends Controller
                 SELECT COUNT(*)
                 FROM contacts
                 WHERE contacts.agent_id = agents.id
-                AND (contacts.lead_type_id = ' . (int) $leadTypeId . ')
+                AND (contacts.lead_type = ' . (int) $leadTypeId . ')
                 ' . (
                     ! empty($startDate) && ! empty($endDate)
                         ? ' AND contacts.created_at BETWEEN "' . $startDate . '" AND "' . $endDate . '"'
