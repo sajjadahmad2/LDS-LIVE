@@ -28,7 +28,7 @@ class ProcessWebhookData implements ShouldQueue
     /**
      * Create a new job instance.
      */
-    public function __construct($webhookdata, $campaign_id,$fromreserve ,$agent)
+    public function __construct($webhookdata, $campaign_id,$fromreserve = false, $agent = null)
     {
         $this->webhookdata = $webhookdata;
         $this->campaign_id = $campaign_id;
