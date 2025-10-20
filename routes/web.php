@@ -180,7 +180,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/log' , [ReserveContactController::class,'log'])->name('log.index');
         //Agent route
         Route::get('agent/status/{id?}', [AgentController::class, 'agent'])->name('agent.status');
-        Route::get('/compaign/agent/', [AgentController::class, 'agentCompaignSearch'])->name('agent.compaign');
+        Route::get('/campaign/agent/', [AgentController::class, 'agentCampaignSearch'])->name('agent.campaign');
                 Route::get('/get-carrier-types', function (Request $request) {
             $leadtype=$request->get('lead_type', 'ACA');
             $allTypes = getCarrierType($leadtype);

@@ -23,34 +23,13 @@
 @section('content')
     @if (is_role() == 'admin')
 
-            {{-- <div class="row mb-4 align-items-center">
-                <div class="col-md-4">
-                    <label for="agentFilter" class="form-label fw-semibold">Select Agent</label>
-                    <select id="agentFilter" class="form-select shadow-sm rounded-pill px-4">
-                        <option value="">-- All Agents --</option>
-                        @foreach ($agents as $agent)
-                            <option value="{{ $agent->id }}">{{ $agent->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-md-4">
-                    <label for="dateRange" class="form-label fw-semibold">Select Date Range</label>
-                    <input type="text" id="dateRange" class="form-control shadow-sm rounded-pill px-4"
-                        placeholder="Select date range" autocomplete="off" />
-                </div>
-                <div class="col-md-4 d-flex align-items-end mt-4">
-                    <button id="filterBtn" class="btn btn-primary w-100 rounded-pill">Filter</button>
-                </div>
-            </div>
 
-            <div id="dashboardStats" class="row g-4">
-                @include('admin.dashboard_stats', ['stats' => []])
-            </div> --}}
 
+        <h5 class="mb-3 text-primary">Showing stats for: {{ $leadType }}</h5>
 
 
         <div class="row row-cols-md-2 row-cols-xl-4">
-        <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="card">
                     <div class="card-body">
                         <label for="agentSelect" class="form-label">Agent</label>
@@ -67,7 +46,29 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body">
+                        <label for="leadTypeSelect" class="form-label">Lead Type</label>
+                        @if (isset($leadTypes) && $leadTypes->count() > 0)
+                            <select class="form-select" id="leadTypeSelect" data-type="lead_type"
+                                onchange="fetchData(this)">
+
+                                @foreach ($leadTypes as $index => $leadType)
+                                    <option value="{{ $leadType->id }}" {{ $index === 0 ? 'selected' : '' }}>
+                                        {{ $leadType->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        @else
+                            <p>No lead types available.</p>
+                        @endif
+
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
                 <div class="card">
                     <div class="card-body">
                         <label for="campaignSelect" class="form-label">Campaign</label>
@@ -85,7 +86,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="card">
                     <div class="card-body">
                         <label for="dataRangeSelect" class="form-label">Date Range Select</label>
@@ -93,7 +94,7 @@
                     </div>
                 </div>
             </div>
-        <div class="col-md-12">
+            <div class="col-md-12">
                 <div class="card">
                     <div class="card-body">
                         <table class="table mb-0 table-hover table-order">
@@ -145,128 +146,64 @@
             let selectedAgentId = '';
             let selectedDateRange = null;
 
-            // // Init date range picker
-            // $('#dateRange').daterangepicker({
-            //     autoUpdateInput: false,
-            //     locale: {
-            //         cancelLabel: 'Clear'
-            //     }
-            // });
 
-            // $('#dateRange').on('apply.daterangepicker', function(ev, picker) {
-            //     selectedDateRange = {
-            //         start: picker.startDate.format('YYYY-MM-DD'),
-            //         end: picker.endDate.format('YYYY-MM-DD')
-            //     };
-            //     $(this).val(
-            //         `${picker.startDate.format('MMM D, YYYY')} - ${picker.endDate.format('MMM D, YYYY')}`
-            //         );
-            // });
-
-            // $('#dateRange').on('cancel.daterangepicker', function() {
-            //     $(this).val('');
-            //     selectedDateRange = null;
-            // });
-
-            // function loadDashboardStats(agentId = '', dateRange = null) {
-            //     $.ajax({
-            //         url: "{{ route('admin.dashboard.stats') }}",
-            //         type: 'GET',
-            //         data: {
-            //             agent_id: agentId,
-            //             start_date: dateRange?.start || '',
-            //             end_date: dateRange?.end || ''
-            //         },
-            //         success: function(response) {
-            //             $('#dashboardStats').html(response.html);
-            //         },
-            //         error: function() {
-            //             toastr.error('Failed to load dashboard stats');
-            //         }
-            //     });
-            // }
-
-            // $('#agentFilter').on('change', function() {
-            //     selectedAgentId = $(this).val();
-            // });
-
-            // $('#filterBtn').on('click', function() {
-            //     loadDashboardStats(selectedAgentId, selectedDateRange);
-            // });
-
-            // loadDashboardStats(); // initial load
         });
 
         function fetchData(selectElement) {
             const selectedValue = selectElement.value;
-            const type = selectElement.dataset.type; // 'agent' or 'campaign'
+            const type = selectElement.dataset.type; // 'agent', 'campaign', or 'lead_type'
             const dateRange = encodeURIComponent($('input[name="datefilter"]').val());
             let agentId = $('#agentSelect').val();
             let campaignId = $('#campaignSelect').val();
+            let leadType = $('#leadTypeSelect').val(); // 👈 new line
 
-            let url = '/admin/compaign/agent';
-            // Clear the other dropdown if one of them is selected
+            let url = '/admin/campaign/agent';
+
             if (type === 'agent' && agentId) {
                 document.getElementById('campaignSelect').value = 'all';
-                campaignId = $('#campaignSelect').val()
+                campaignId = $('#campaignSelect').val();
             } else if (type === 'campaign' && campaignId) {
                 document.getElementById('agentSelect').value = 'all';
                 agentId = $('#agentSelect').val();
             }
-            console.log(agentId, campaignId, type, dateRange);
-            // Construct query parameters for agentId, campaignId, type, and dateRange
-            let params = `?dateRange=${dateRange}&type=${type}`; // Add 'type' here
 
-            if (agentId) {
-                params += `&agentId=${agentId}`;
-            }
+            let params = `?dateRange=${dateRange}&type=${type}&lead_type=${leadType}`;
 
-            if (campaignId) {
-                params += `&campaignId=${campaignId}`;
-            }
-            // // If no value is selected and no date range is provided, display a message
-            // if (!selectedValue && !dateRange) {
-            //     $("#dataBody").html("<tr><td colspan='6'>Please select a valid option.</td></tr>");
-            //     return;
-            // }
+            if (agentId) params += `&agentId=${agentId}`;
+            if (campaignId) params += `&campaignId=${campaignId}`;
 
             $.ajax({
                 type: "GET",
-                url: url + params, // Send the URL with the query parameters
+                url: url + params,
                 success: function(response) {
                     let tableRows = '';
                     if (response.success) {
-                        if (response.redirect) {
-                            window.location.href = response.redirect;
-                            return;
-                        }
                         if (response.data !== null) {
-                            console.log(response.data);
                             response.data.forEach((item, index) => {
                                 tableRows += `
-                    <tr>
-                        <td>${index + 1}</td>
-                        <td>${item.name}</td>
-                        <td>${item.total_limit || 0} / ${item.total_contacts_count || 0}</td>
-                        <td>${item.total_limit-item.total_contacts_count || 0}</td>
-                        <td>${item.daily_limit || 0} / ${item.daily_contacts_count || 0}</td>
-                        <td>${item.monthly_limit || 0} / ${item.monthly_contacts_count || 0}</td>
-                        <td>${item.priority || 'N/A'}</td>
-                    </tr>`;
+                        <tr>
+                            <td>${index + 1}</td>
+                            <td>${item.name}</td>
+                            <td>${item.total_limit || 0} / ${item.total_contacts_count || 0}</td>
+                            <td>${item.total_limit - item.total_contacts_count || 0}</td>
+                            <td>${item.daily_limit || 0} / ${item.daily_contacts_count || 0}</td>
+                            <td>${item.monthly_limit || 0} / ${item.monthly_contacts_count || 0}</td>
+                            <td>${item.priority || 'N/A'}</td>
+                        </tr>`;
                             });
                         } else {
-                            tableRows = `<tr><td colspan="6">No ${type} data found.</td></tr>`;
+                            tableRows = `<tr><td colspan="7">No data found for selected filters.</td></tr>`;
                         }
                         $("#dataBody").html(tableRows);
                     }
                 },
                 error: function(xhr) {
                     console.error("Error:", xhr.responseText);
-                    alert("Failed to fetch data. Please try again later.");
-                    $("#dataBody").html("<tr><td colspan='6'>An error occurred.</td></tr>");
+                    $("#dataBody").html("<tr><td colspan='7'>An error occurred.</td></tr>");
                 }
             });
         }
+
 
 
         $(function() {

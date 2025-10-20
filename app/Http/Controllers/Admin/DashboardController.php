@@ -17,13 +17,13 @@ class DashboardController extends Controller
     public function index()
     {
         if (is_role() == 'admin') {
-            $agents    = $this->getAgentsByUser(login_id());
+            $agents = $this->getAgentsByUser(login_id());
             // $campaigns = $this->getCampaignsByUser(login_id());
 
             // $data = $this->getAgentStatsQuery(login_id())->get();
 
         } elseif (is_role() == 'superadmin') {
-            $agents    = Agent::all();
+            $agents = Agent::all();
             // $campaigns = Campaign::all();
             // $data      = $this->getAgentStatsQuery(null)->get(); // Get all agents
 
@@ -36,16 +36,69 @@ class DashboardController extends Controller
 
         return view('admin.dashboard', get_defined_vars());
     }
-    public function detailDashboard()
+    public function detailDashboard(Request $request)
     {
         if (is_role() == 'admin') {
             $agents    = $this->getAgentsByUser(login_id());
             $campaigns = $this->getCampaignsByUser(login_id());
+            $leadTypes = $this->getLeadTypesByUser(login_id()); // Default to ACA
+            $leadType  = $request->get('lead_type', '1');       // Default to ACA
 
-            $data = $this->getAgentStatsQuery(login_id())->get();
+            $data = $this->getAgentStatsQuery(login_id(), $leadType)->get();
+
             return view('admin.detailDashboard', get_defined_vars());
-
         }
+    }
+    /**
+     * Get agent statistics query
+     */
+    private function getAgentStatsQuery($userId = null, $leadType = null)
+    {
+        $query = Agent::select(
+            'agents.id',
+            'agents.name',
+            'campaign_agents.campaign_id',
+            'campaign_agents.priority',
+            'agent_lead_types.lead_type',
+            'agent_lead_types.total_limit',
+            'agent_lead_types.daily_limit',
+            'agent_lead_types.monthly_limit',
+            DB::raw('(SELECT COUNT(*) FROM contacts
+                  WHERE contacts.agent_id = agents.id
+                  AND contacts.lead_type = agent_lead_types.lead_type) as total_contacts_count'),
+            DB::raw('(SELECT COUNT(*) FROM contacts
+                  WHERE contacts.agent_id = agents.id
+                  AND contacts.lead_type = agent_lead_types.lead_type
+                  AND DATE(contacts.created_at) = CURRENT_DATE) as daily_contacts_count'),
+            DB::raw('(SELECT COUNT(*) FROM contacts
+                  WHERE contacts.agent_id = agents.id
+                  AND contacts.lead_type = agent_lead_types.lead_type
+                  AND MONTH(contacts.created_at) = MONTH(CURRENT_DATE)) as monthly_contacts_count')
+        )
+            ->join('campaign_agents', 'campaign_agents.agent_id', '=', 'agents.id')
+            ->join('agent_lead_types', 'agent_lead_types.agent_id', '=', 'agents.id');
+
+        if ($userId) {
+            $query->where('agents.user_id', $userId);
+        }
+
+        if ($leadType) {
+            $query->where('agent_lead_types.lead_type', $leadType);
+        }
+
+        $query->groupBy(
+            'agents.id',
+            'agents.name',
+            'campaign_agents.campaign_id',
+            'campaign_agents.priority',
+            'agent_lead_types.lead_type',
+            'agent_lead_types.total_limit',
+            'agent_lead_types.daily_limit',
+            'agent_lead_types.monthly_limit'
+        )
+            ->orderBy('campaign_agents.priority', 'asc');
+
+        return $query;
     }
     public function getDashboardStats(Request $request)
     {
@@ -111,41 +164,9 @@ class DashboardController extends Controller
     {
         return Campaign::where('user_id', $userId)->get();
     }
-
-    /**
-     * Get agent statistics query
-     */
-    private function getAgentStatsQuery($userId = null)
+    private function getLeadTypesByUser($userId)
     {
-        $query = Agent::select(
-            'agents.id',
-            'agents.priority',
-            'agents.daily_limit',
-            'agents.monthly_limit',
-            'agents.total_limit',
-            'agents.name',
-            DB::raw('(SELECT COUNT(*) FROM contacts WHERE contacts.agent_id = agents.id AND MONTH(contacts.created_at) = MONTH(CURRENT_DATE)) as monthly_contacts_count'),
-            DB::raw('(SELECT COUNT(*) FROM contacts WHERE contacts.agent_id = agents.id AND DATE(contacts.created_at) = CURRENT_DATE) as daily_contacts_count'),
-            DB::raw('(SELECT COUNT(*) FROM contacts WHERE contacts.agent_id = agents.id) as total_contacts_count')
-        )
-            ->leftJoin('contacts', 'agents.id', '=', 'contacts.agent_id')
-            ->groupBy(
-                'agents.id',
-                'agents.priority',
-                'agents.daily_limit',
-                'agents.monthly_limit',
-                'agents.total_limit',
-                'agents.name'
-            )
-            ->orderBy('agents.priority', 'asc')
-            ->orderByRaw('(agents.monthly_limit - monthly_contacts_count) desc')
-            ->orderByRaw('(agents.daily_limit - daily_contacts_count) desc')
-            ->orderByRaw('(agents.total_limit - total_contacts_count) desc');
-        if ($userId) {
-            $query->where('agents.user_id', $userId);
-        }
-
-        return $query;
+        return LeadType::where('user_id', $userId)->get();
     }
     public function getCustomField(Request $request)
     {
