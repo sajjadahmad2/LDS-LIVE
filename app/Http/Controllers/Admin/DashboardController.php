@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Agent;
 use App\Models\AgentUser;
+use App\Models\LeadType;
+
 use App\Models\Campaign;
 use App\Models\Contact;
 use App\Models\CustomField;
