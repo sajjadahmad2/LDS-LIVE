@@ -9,7 +9,8 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Log;
+use Illuminate\Support\Facades\Log;
+
 
 class ConnectionJob implements ShouldQueue
 {
@@ -56,7 +57,7 @@ class ConnectionJob implements ShouldQueue
 
                     if (isset($locationId->location_id)) {
                         if ($locationId->statusCode == 400) {
-                            Log::error('Bad Request: Invalid locationId or accessToken', [
+                            \Log::error('Bad Request: Invalid locationId or accessToken', [
                                 'location_id' => $locationId->location_id ?? null,
                                 'user_id'     => $this->company_id ?? null,
                                 'response'    => $locationId,

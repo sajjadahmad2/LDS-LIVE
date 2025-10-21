@@ -69,40 +69,40 @@ class CRM
             $loc->refresh();
         }
         //save all the location in the company table
-ConnectionJob::dispatch($company_id, $loc);
-       // set_time_limit(0);
-        // $getalllocations = self::agencyV2($company_id, 'locations/search?limit=1000');
+        // ConnectionJob::dispatch($company_id, $loc);
+       set_time_limit(0);
+        $getalllocations = self::agencyV2($company_id, 'locations/search?limit=1000');
 
-        // if ($getalllocations && property_exists($getalllocations, 'locations')) {
-        //     $locations = $getalllocations->locations;
-        //     if (! empty($locations)) {
-        //         foreach ($locations as $location) {
-        //             \App\Models\CompanyLocation::updateOrCreate(
-        //                 [
-        //                     'location_id' => $location->id ?? null, // Search criteria
-        //                 ],
-        //                 [
-        //                     'user_id'        => $company_id,
-        //                     'location_email' => $location->email ?? null,
-        //                     'location_name'  => $location->name ?? null,
-        //                     'company_id'     => $location->companyId ?? null,
-        //                 ]
-        //             );
-        //             // $locationId = \CRM::connectLocation($company_id, $location->id, $loc, $company_id);
-        //             // if (isset($locationId->location_id)) {
-        //             //     if ($locationId->statusCode == 400) {
-        //             //         \Log::error('Bad Request: Invalid locationId or accessToken', [
-        //             //             'location_id' => $user->location_id,
-        //             //             'user_id'     => $token->user_id,
-        //             //             'response'    => $locationId,
-        //             //         ]);
-        //             //         continue;
-        //             //     }
-        //             //     $ghl = GhlAuth::where('location_id', $locationId->location_id)->where('user_id', $user->id)->first();
-        //             // }
-        //         }
-        //     }
-        // }
+        if ($getalllocations && property_exists($getalllocations, 'locations')) {
+            $locations = $getalllocations->locations;
+            if (! empty($locations)) {
+                foreach ($locations as $location) {
+                    \App\Models\CompanyLocation::updateOrCreate(
+                        [
+                            'location_id' => $location->id ?? null, // Search criteria
+                        ],
+                        [
+                            'user_id'        => $company_id,
+                            'location_email' => $location->email ?? null,
+                            'location_name'  => $location->name ?? null,
+                            'company_id'     => $location->companyId ?? null,
+                        ]
+                    );
+                    $locationId = \CRM::connectLocation($company_id, $location->id, $loc, $company_id);
+                    if (isset($locationId->location_id)) {
+                        if ($locationId->statusCode == 400) {
+                            \Log::error('Bad Request: Invalid locationId or accessToken', [
+                                'location_id' => $user->location_id,
+                                'user_id'     => $token->user_id,
+                                'response'    => $locationId,
+                            ]);
+                            continue;
+                        }
+                        $ghl = GhlAuth::where('location_id', $locationId->location_id)->where('user_id', $user->id)->first();
+                    }
+                }
+            }
+        }
 
         return $loc;
     }
