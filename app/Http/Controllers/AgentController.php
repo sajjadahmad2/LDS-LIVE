@@ -613,23 +613,25 @@ class AgentController extends Controller
     public function agentCampaignSearch(Request $request)
     {
         // Retrieve parameters
-        $type       = $request->query('type');
-        $dateRange  = $request->query('dateRange');
+        $type          = $request->query('type');
+        $dateRange     = $request->query('dateRange');
         $reqAgentId    = $request->query('agentId');
         $reqCampaignId = $request->query('campaignId');
-        $leadTypeId = $request->query('lead_type') ?? 1; // 👈 now taken from request (default = 1)
-
+        $leadTypeId    = $request->query('lead_type') ?? 1; // 👈 now taken from request (default = 1)
+        $startDate     = null;
+        $endDate       = null;
         // Handle date range
         $currentDate = Carbon::now('America/Chicago')->format('Y-m-d');
         if ($dateRange) {
             $dates     = explode(' - ', $dateRange);
             $startDate = Carbon::createFromFormat('m/d/Y', $dates[0], 'America/Chicago')->startOfDay()->format('Y-m-d H:i:s');
             $endDate   = Carbon::createFromFormat('m/d/Y', $dates[1], 'America/Chicago')->endOfDay()->format('Y-m-d H:i:s');
-        } else {
-            // Default to current month range up to now
-            $startDate = Carbon::now('America/Chicago')->startOfMonth()->format('Y-m-d H:i:s');
-            $endDate   = Carbon::now('America/Chicago')->endOfDay()->format('Y-m-d H:i:s');
         }
+        // else {
+        //     // Default to current month range up to now
+        //     $startDate = Carbon::now('America/Chicago')->startOfMonth()->format('Y-m-d H:i:s');
+        //     $endDate   = Carbon::now('America/Chicago')->endOfDay()->format('Y-m-d H:i:s');
+        // }
 
         $data = null;
 
@@ -679,33 +681,40 @@ class AgentController extends Controller
                 'agent_lead_types.monthly_limit',
                 'agent_lead_types.total_limit',
                 DB::raw('(
-            SELECT COUNT(*)
-            FROM contacts
-            WHERE contacts.agent_id = agents.id
-            AND contacts.lead_type = ' . (int) $leadTypeId . '
-            AND MONTH(contacts.created_at) = MONTH(CURRENT_DATE)
-        ) as monthly_contacts_count'),
+        SELECT COUNT(*)
+        FROM contacts
+        WHERE contacts.agent_id = agents.id
+        AND contacts.lead_type = ' . (int) $leadTypeId . '
+        AND MONTH(contacts.created_at) = MONTH(CURRENT_DATE)
+    ) as monthly_contacts_count'),
                 DB::raw('(
-            SELECT COUNT(*)
-            FROM contacts
-            WHERE contacts.agent_id = agents.id
-            AND contacts.lead_type = ' . (int) $leadTypeId . '
-            AND DATE(contacts.created_at) = CURRENT_DATE
-        ) as daily_contacts_count'),
+        SELECT COUNT(*)
+        FROM contacts
+        WHERE contacts.agent_id = agents.id
+        AND contacts.lead_type = ' . (int) $leadTypeId . '
+        AND DATE(contacts.created_at) = CURRENT_DATE
+    ) as daily_contacts_count'),
+                // 👇 Total contacts conditionally based on date range
                 DB::raw('(
-            SELECT COUNT(*)
-            FROM contacts
-            WHERE contacts.agent_id = agents.id
-            AND contacts.lead_type = ' . (int) $leadTypeId . '
-            AND contacts.created_at BETWEEN "' . $startDate . '" AND "' . $endDate . '"
-        ) as total_contacts_count')
+        SELECT COUNT(*)
+        FROM contacts
+        WHERE contacts.agent_id = agents.id
+        AND contacts.lead_type = ' . (int) $leadTypeId . '
+        ' . (
+                    // if both dates exist, apply between filter; else count all
+                    (! empty($startDate) && ! empty($endDate)
+                            ? 'AND contacts.created_at BETWEEN "' . $startDate . '" AND "' . $endDate . '"'
+                            : ''
+                    )
+                ) . '
+    ) as total_contacts_count')
             )
                 ->leftJoin('campaign_agents', 'campaign_agents.agent_id', '=', 'agents.id')
                 ->join('agent_lead_types', function ($join) use ($leadTypeId) {
                     $join->on('agent_lead_types.agent_id', '=', 'agents.id')
                         ->where('agent_lead_types.lead_type', '=', $leadTypeId);
                 })
-                ->whereIn('agents.id', $agentId)
+                ->whereIn('agents.id', (array) $agentId) // ensure not nested array
                 ->groupBy(
                     'agents.id',
                     'agents.name',
@@ -720,6 +729,7 @@ class AgentController extends Controller
                 ->orderByRaw('(agent_lead_types.total_limit - total_contacts_count) desc');
 
             $data = $query->get();
+
         }
 
         if (empty($data) || ($type !== 'all' && $data->isEmpty())) {
