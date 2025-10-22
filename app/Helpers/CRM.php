@@ -370,7 +370,7 @@ class CRM
 
         if ($companyToken) {
             $token = static::getLocationAccessToken($company_id, $location, $companyToken, $connectuid);
-            dd($token);
+
 
         }
         return $token;
