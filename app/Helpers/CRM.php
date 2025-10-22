@@ -98,7 +98,7 @@ class CRM
                             ]);
                             continue;
                         }
-                        $ghl = GhlAuth::where('location_id', $locationId->location_id)->where('user_id', $user->id)->first();
+                        $ghl = GhlAuth::where('location_id', $locationId->location_id)->where('user_id', $company_id)->first();
                     }
                 }
             }
@@ -211,6 +211,7 @@ class CRM
             $token = self::getCrmToken(['user_id' => $user_id, 'user_type' => self::$lang_com]);
         }
         $resp = null;
+
         if ($token) {
             $response = self::makeCall(static::$base_url . "oauth/locationToken", 'POST', "companyId=" . $token->company_id . "&locationId=" . $location_id, [
                 "Accept: application/json",
@@ -227,6 +228,7 @@ class CRM
                 $resp = self::saveCrmToken($resp, $user_id);
             } else if (self::isExpired($resp) && $retries == 0) {
                 list($is_refresh, $token) = self::getRefreshToken($user_id, $token, true);
+
                 if ($is_refresh) {
                     $response = self::getLocationAccessToken($user_id, $location_id, $token, $connectuid, $retries + 1);
 
@@ -238,7 +240,7 @@ class CRM
 
     public static function go_and_get_token($code, $type = "", $company_id = null, $loc = null)
     {
-        //dd($code, $type, $company_id, $loc);
+
         // if ($type == 'reconnect') {
         //     $oldtype = $type;
         //     $type = '';
@@ -251,6 +253,7 @@ class CRM
         $error = [$status, 'Unable to update'];
         if (is_string($code)) {
             $code = self::crm_token($code, $type);
+
             //$type = $oldtype ?? $type;
             $code = json_decode($code);
         }
@@ -300,6 +303,7 @@ class CRM
                     if ($code != $location->refresh_token) {
                         return [true, $location];
                     }
+
                     return self::go_and_get_token($code, '1', $company_id, $location);
                 } catch (\Throwable $th) {
                     //throw $th;
@@ -366,6 +370,7 @@ class CRM
 
         if ($companyToken) {
             $token = static::getLocationAccessToken($company_id, $location, $companyToken, $connectuid);
+            dd($token);
 
         }
         return $token;

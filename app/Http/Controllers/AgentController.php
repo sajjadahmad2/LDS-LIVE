@@ -325,6 +325,7 @@ class AgentController extends Controller
             }
 
             $validated = $validator->validated();
+
             \DB::beginTransaction();
 
             // Update agent
@@ -433,6 +434,7 @@ class AgentController extends Controller
                 return false;
             }
             $locationId = \CRM::connectLocation($usertoken->user_id, $location, $usertoken);
+            dd(  $locationId);
             if (isset($locationId->location_id)) {
                 if ($locationId->statusCode == 400) {
                     \Log::error('Bad Request: Invalid locationId or accessToken', [
