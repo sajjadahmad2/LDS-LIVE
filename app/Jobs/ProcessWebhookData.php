@@ -228,7 +228,7 @@ class ProcessWebhookData implements ShouldQueue
 
         // If all agents in this priority level have full weightage, reset and retry
         if ($weightageFull) {
-            foreach ($priorityAgents as $agent) {
+            foreach ($priorityAgents as $campaignAgent) {
                 // Check limits again before resetting weightage
                 $agent     = $campaignAgent->agent;
                 $agentData = $agent->agentLeadTypes->first(); // safer than [0]
@@ -249,7 +249,7 @@ class ProcessWebhookData implements ShouldQueue
             }
 
             // Retry with the same priority level after weightage reset
-            foreach ($priorityAgents as $agent) {
+            foreach ($priorityAgents as $campaignAgent) {
                 $agent     = $campaignAgent->agent;
                 $agentData = $agent->agentLeadTypes->first(); // safer than [0]
 
