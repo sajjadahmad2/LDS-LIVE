@@ -40,9 +40,9 @@ class WebhookController extends Controller
     public function getAgentConsent(Request $request)
     {
         $validated = $request->validate([
-            'email'     => 'required|email',
-            'lead_type' => 'required',
-            'graylisted_agents'=> 'nullable|array',
+            'email'             => 'required|email',
+            'lead_type'         => 'required',
+            'graylisted_agents' => 'nullable|array',
 
         ]);
         $lead_type  = $validated['lead_type'];
@@ -56,26 +56,33 @@ class WebhookController extends Controller
         if (! $agent) {
             return response()->json(['error' => 'Agent not found'], 404);
         }
-        if(isset($validated['graylisted_agents']) && !empty($validated['graylisted_agents']) && count($validated['graylisted_agents']) > 0){
+        if (isset($validated['graylisted_agents']) && ! empty($validated['graylisted_agents']) && count($validated['graylisted_agents']) > 0) {
             $graylisted_agents = $validated['graylisted_agents'];
-            $agentids = Agent::where('email', $graylisted_agents)->pluck('id')->toArray();
-            if (count($agentids) <= 0 ) {
+            $agentids          = Agent::where('email', $graylisted_agents)->pluck('id')->toArray();
+            if (count($agentids) <= 0) {
                 return response()->json(['error' => 'Agent not found'], 404);
             }
             $leadTypeId = Campaign::where('id', $proccessContact->campaign_id)->first()->lead_type ?? 1;
-            $agent =$this->FindAnotherAgent($proccessContact,$proccessContact->campaign_id,$leadTypeId,$agentids);
-
+            $agent      = $this->FindAnotherAgent($proccessContact, $proccessContact->campaign_id, $leadTypeId, $agentids);
 
         }
-        if(is_null($agent)){
+        if (is_null($agent)) {
             return response()->json(['error' => 'Agent not found'], 404);
         }
         $agentData             = AgentLeadType::select('consent', 'npm_number', 'cross_link')->where('agent_id', $agent->id)->where('lead_type', $leadTypeId)->first();
         $formattedCarrierTypes = [];
         $carrierTypes          = AgentCarrierType::select('carrier_type')->where('agent_id', $agent->id)->where('lead_type', $leadTypeId)->get();
         foreach ($carrierTypes as $type) {
-            $formattedCarrierTypes[] = [$type->carrier_type];
+            // Split by "__"
+            $parts = explode('__', $type->carrier_type);
+
+            // Create object with name and id
+            $formattedCarrierTypes[] = [
+                'name' => $parts[0] ?? null,
+                'id'   => $parts[1] ?? null,
+            ];
         }
+
         $agentData->carrierType = $formattedCarrierTypes;
         //dd($agent);
 
@@ -87,9 +94,9 @@ class WebhookController extends Controller
     public function getAgentConsentAgain(Request $request)
     {
         $validated = $request->validate([
-            'agent_email'     => 'required|email',
-            'contact_email'   => 'required|email',
-            'lead_type' => 'required',
+            'agent_email'   => 'required|email',
+            'contact_email' => 'required|email',
+            'lead_type'     => 'required',
         ]);
         $lead_type  = $validated['lead_type'];
         $leadTypeId = findLeadTypeId($lead_type);
@@ -132,8 +139,16 @@ class WebhookController extends Controller
         $formattedCarrierTypes = [];
         $carrierTypes          = AgentCarrierType::select('carrier_type')->where('agent_id', $agent->id)->where('lead_type', $leadTypeId)->get();
         foreach ($carrierTypes as $type) {
-            $formattedCarrierTypes[] = [$type->carrier_type];
+            // Split by "__"
+            $parts = explode('__', $type->carrier_type);
+
+            // Create object with name and id
+            $formattedCarrierTypes[] = [
+                'name' => $parts[0] ?? null,
+                'id'   => $parts[1] ?? null,
+            ];
         }
+
         $agent->carrierType = $formattedCarrierTypes;
 
         return response()->json([
@@ -217,7 +232,7 @@ class WebhookController extends Controller
     public function ContactWebhook($request, $camid = null, $lead_type = null)
     {
         //$leadTypeId = findLeadTypeId($lead_type);
-        $leadTypeId = Campaign::where('id', $camid)->first()->lead_type ?? NULL;
+        $leadTypeId = Campaign::where('id', $camid)->first()->lead_type ?? null;
 
         $data = $request->all();
 
@@ -286,12 +301,10 @@ class WebhookController extends Controller
             return response()->json(['status' => 'error', 'message' => "Webhook type not found: {$type}"], 400);
         }
     }
-    public function findAnotherAgent($proccessContact, $camid = null,$leadTypeId, $agentids)
+    public function findAnotherAgent($proccessContact, $camid = null, $leadTypeId, $agentids)
     {
-        $agent= $this->findAgent($proccessContact, $camid, $leadTypeId, $agentids);
+        $agent = $this->findAgent($proccessContact, $camid, $leadTypeId, $agentids);
         return $agent;
-
-
 
     }
     protected function findAgent($proccessContact, $camid = null, $leadTypeId, $oldAgentIds = [])
@@ -304,7 +317,7 @@ class WebhookController extends Controller
             $currentMonth = Carbon::now('America/Chicago')->month;
             $currentDate  = Carbon::now('America/Chicago')->format('Y-m-d');
             $mainCampaign = Campaign::find($camid);
-            $query = CampaignAgent::where('campaign_id', $camid);
+            $query        = CampaignAgent::where('campaign_id', $camid);
             if (count($oldAgentIds) > 0) {
                 $query->whereNotIn('agent_id', $oldAgentIds);
             }
@@ -428,9 +441,9 @@ class WebhookController extends Controller
                     }
                 }
             }
-            return NULL;
+            return null;
         }
-        return NULL;
+        return null;
     }
 
     protected function ReserveContact($data, $agent = null, $campaign, $leadTypeId)
