@@ -84,6 +84,7 @@ class WebhookController extends Controller
         }
 
         $agentData->carrierType = $formattedCarrierTypes;
+        $agentData->email = $agent->email;
         //dd($agent);
 
         return response()->json([
