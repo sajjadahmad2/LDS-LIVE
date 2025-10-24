@@ -332,15 +332,15 @@ class WebhookController extends Controller
                             ->orWhere(DB::raw('TRIM(LOWER(short_form))'), strtolower($state));
                     })->where('lead_type', $leadTypeId);
                 })
-                ->with(['agent' => function ($query) use ($currentMonth, $currentDate) {
+                ->with(['agent' => function ($query) use ($currentMonth, $currentDate,$leadTypeId) {
                     $query->withCount([
-                        'contacts as monthly_contacts_count' => function ($q) use ($currentMonth) {
+                        'contacts as monthly_contacts_count' => function ($q) use ($currentMonth,$leadTypeId) {
                             $q->where('status', 'Sent')->where('lead_type', $leadTypeId)->whereMonth('created_at', $currentMonth);
                         },
-                        'contacts as daily_contacts_count'   => function ($q) use ($currentDate) {
+                        'contacts as daily_contacts_count'   => function ($q) use ($currentDate,$leadTypeId) {
                             $q->where('status', 'Sent')->where('lead_type', $leadTypeId)->whereDate('created_at', $currentDate);
                         },
-                        'contacts as total_contacts_count'   => function ($q) {
+                        'contacts as total_contacts_count'   => function ($q) use ($leadTypeId)  {
                             $q->where('status', 'Sent')->where('lead_type', $leadTypeId);
                         },
                     ]);
