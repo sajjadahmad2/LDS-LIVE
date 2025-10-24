@@ -366,7 +366,7 @@ class WebhookController extends Controller
 
                     $agent     = $campaignAgent->agent;
                     $agentData = $agent->agentLeadTypes->first(); // safer than [0]
-                    appendJobLog($contact_id, 'all agents found : ' . json_encode($agentData));
+                    //appendJobLog($contact_id, 'all agents found : ' . json_encode($agentData));
 
                     if (! $agentData) {
                         // No lead type found for this agent, skip
