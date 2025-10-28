@@ -392,12 +392,15 @@
 @section('scripts')
     @include('admin.select2.scriptload', ['load' => ['datatable']])
     <script type="text/javascript">
+        const allCarrierTypes = @json($carrierTypes);
+    </script>
+    <script type="text/javascript">
         $(document).ready(function() {
             initializeSelect2();
             initializeSelect2ForTabs();
 
             function initializeSelect2ForTabs() {
-                // States, Destination, Agent Access -> static select2
+                // Static select2 setup
                 $('.states-select, #destination_location, #agentaccess').select2({
                     tags: true,
                     width: '100%',
@@ -405,81 +408,115 @@
                     allowClear: true,
                 });
 
-                // Carrier type -> AJAX select2 + sortable
                 $('.carrier-type-select').each(function() {
-                    let $select = $(this);
+                    const $select = $(this);
+                    const leadType = $select.data('lead-type') || 'Medicare';
+                    const allCarriers = allCarrierTypes[leadType] || [];
+
+                    // Build data
+                    const carrierObjects = allCarriers.map(entry => ({
+                        id: entry,
+                        text: entry
+                    }));
 
                     $select.select2({
                         width: '100%',
                         allowClear: true,
                         placeholder: 'Select Carrier Type',
                         dropdownParent: $("#agentModal"),
-                        ajax: {
-                            url: "{{ route('admin.getCarrierTypes') }}",
-                            dataType: 'json',
-                            delay: 100,
-                            data: function(params) {
-                                return {
-                                    q: params.term,
-                                    page: params.page || 1,
-                                    lead_type: $select.data('lead-type')
-                                };
-                            },
-                            beforeSend: function() {
-                                $('.loader').show();
-                            },
-                            processResults: function(data, params) {
-                                params.page = params.page || 1;
-                                return {
-                                    results: data.results,
-                                    pagination: {
-                                        more: data.pagination.more
-                                    }
-                                };
-                            },
-                            complete: function() {
-                                $('.loader').hide();
-                            },
-                            cache: true
-                        }
+                        multiple: true,
+                        closeOnSelect: false,
+                        data: carrierObjects,
                     });
-
-                    // Enable sorting inside Select2
-                    function makeSortable() {
-                        let $selection = $select.siblings('.select2').find('.select2-selection__rendered');
-
-                        $selection.sortable({
-                            containment: "parent",
-                            items: ".select2-selection__choice",
-                            stop: function() {
-                                let sortedValues = [];
-                                $selection.children('.select2-selection__choice').each(
-                                    function() {
-                                        let text = $(this).text().trim();
-                                        let value = $select.find("option").filter(
-                                            function() {
-                                                return $(this).text().trim() === text;
-                                            }).val();
-                                        if (value) {
-                                            sortedValues.push(value);
-                                        }
-                                    });
-                                if (sortedValues.length > 0) {
-                                    $select.val(sortedValues).trigger('change.select2');
-                                }
-                            }
-                        }).addClass('sortable-selection');
-                    }
 
                     $select.on('select2:open', function() {
-                        setTimeout(makeSortable, 100);
+                        const $dropdown = $('.select2-dropdown');
+                        const $search = $('.select2-search__field');
+
+                        // Helper to get visible options from the dropdown DOM
+                        function getVisibleOptions() {
+                            return $(
+                                    '.select2-results__option:not(.select2-results__option--highlight, .select2-select-all-btn)'
+                                    )
+                                .map(function() {
+                                    const id = $(this).data('data')?.id || $(this).text();
+                                    return id;
+                                })
+                                .get()
+                                .filter(id => id && id !== '');
+                        }
+
+                        // Function to render or refresh the button
+                        function renderSelectAllButton() {
+                            const visibleIds = getVisibleOptions();
+                            const count = visibleIds.length;
+                            const term = ($search.val() || '').trim();
+
+                            // Remove existing first
+                            $dropdown.find('.select2-select-all-btn').remove();
+
+                            if (count > 0) {
+                                const label = term ?
+                                    `Select ${count} matching "${term}"` :
+                                    `Select all (${count}) carriers`;
+
+                                const $btn = $(`
+            <li class="select2-results__option select2-select-all-btn"
+                role="option"
+                style="cursor:pointer; font-weight:600; background:#f8f9fa; border-bottom:1px solid #ddd;">
+                ${label}
+            </li>
+          `);
+
+                                // Inject at top
+                                $dropdown.find('.select2-results__options').first().before($btn);
+
+                                // Handle click
+                                $btn.off('click').on('click', function(e) {
+                                    e.preventDefault();
+
+                                    if (!confirm(
+                                            `Select ${count} carriers currently shown?`))
+                                        return;
+
+                                    const current = $select.val() || [];
+                                    const merged = Array.from(new Set([...current, ...
+                                        visibleIds
+                                    ]));
+                                    $select.val(merged).trigger('change.select2');
+                                    $select.select2('close');
+                                });
+                            }
+                        }
+
+                        // Initial render
+                        setTimeout(renderSelectAllButton, 100);
+
+                        // Update when typing or dropdown updates
+                        $search.off('input.selectAll').on('input.selectAll', function() {
+                            setTimeout(renderSelectAllButton, 150);
+                        });
+
+                        // Also update when Select2 re-renders results (some versions do that)
+                        $(document).off('DOMSubtreeModified.selectAll').on(
+                            'DOMSubtreeModified.selectAll', '.select2-results__options',
+                            function() {
+                                setTimeout(renderSelectAllButton, 150);
+                            });
+
+                        // Cleanup
+                        $select.one('select2:close', function() {
+                            $search.off('input.selectAll');
+                            $(document).off('DOMSubtreeModified.selectAll');
+                            $dropdown.find('.select2-select-all-btn').remove();
+                        });
                     });
-                    $select.on('select2:select select2:unselect', function() {
-                        setTimeout(makeSortable, 100);
-                    });
-                    setTimeout(makeSortable, 500);
                 });
             }
+
+
+
+
 
             // Loader handling
             $(document).on('select2:opening',

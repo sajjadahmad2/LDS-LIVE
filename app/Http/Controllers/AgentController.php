@@ -177,8 +177,9 @@ class AgentController extends Controller
         $states       = State::select('id', 'state')->get();
         $alllocations = CompanyLocation::all();
         $leadTypes    = LeadType::select('id', 'name')->get();
+        $carrierTypes=getAllCarrierType();
 
-        return view('admin.agents.index', compact('states', 'alllocations', 'leadTypes'));
+        return view('admin.agents.index', compact('states', 'alllocations', 'leadTypes','carrierTypes'));
     }
 
     public function store(Request $request)

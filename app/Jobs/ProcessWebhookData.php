@@ -397,7 +397,16 @@ class ProcessWebhookData implements ShouldQueue
 
         $customData = $contact->contact_json;
         $tags       = ! empty($contact->tags) ? explode(',', (string) $contact->tags) : [];
-        $tags       = array_merge($tags, ['aca']);
+        $leadTypeMap = [
+            1 => 'ACA',
+            2 => 'FE',
+            3 => 'Medicare',
+        ];
+
+        if (isset($leadTypeMap[$leadTypeId])) {
+            $tags = array_merge($tags, [$leadTypeMap[$leadTypeId]]);
+        }
+
         $newdata    = [
             'locationId'  => $agent->agentLeadTypes->first()->destination_location,
             'firstName'   => $contact->first_name ?? null,
