@@ -438,15 +438,15 @@ class AgentController extends Controller
             if (isset($locationId->location_id)) {
                 if ($locationId->statusCode == 400) {
                     \Log::error('Bad Request: Invalid locationId or accessToken', [
-                        'location_id' => $$location,
-                        'user_id'     => $agenttoken->user_id,
+                        'location_id' => $location,
+                        'user_id'     => $agent->user_id,
                         'response'    => $locationId,
                     ]);
                     return response()->json(['error' => 'Invalid locationId or accessToken'], 400);
                 }
 
                 $ghl            = GhlAuth::where('location_id', $locationId->location_id)->where('user_id', $agent->user_id)->first();
-                $locationDetail = \CRM::crmV2($agenttoken->user_id, 'locations/' . $ghl->location_id, 'get', '', [], false, $ghl->location_id, $ghl);
+                $locationDetail = \CRM::crmV2($agent->user_id, 'locations/' . $ghl->location_id, 'get', '', [], false, $ghl->location_id, $ghl);
                 if (isset($locationDetail->location)) {
                     $subAccountDetail = $locationDetail->location;
                 }
