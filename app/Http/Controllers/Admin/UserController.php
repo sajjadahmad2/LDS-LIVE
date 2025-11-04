@@ -334,75 +334,74 @@ class UserController extends Controller
         set_time_limit(0);
 
         $locationId = $request->location_id;
-        $users      = User::where('location_id', $locationId)->get();
+        $location   = $request->location_id;
+        $agenttoken = GhlAuth::where('user_id', login_id())->where('user_type', 'Location')->where('location_id', $location)->first();
+        $usertoken  = GhlAuth::where('user_id',  login_id())->where('user_type', 'Company')->first();
 
-        if ($users->isEmpty()) {
-            return response()->json(['message' => 'No users found for this location'], 404);
-        }
-
-        $token = GhlAuth::where('user_type', 'Company')->first();
 
         // Start Database Transaction
         DB::beginTransaction();
         try {
-            foreach ($users as $user) {
-                $connectuid   = $user->id;
-                $locationData = \CRM::connectLocation($token->user_id, $user->location_id, $token, $connectuid);
+            $locationId = \CRM::connectLocation($usertoken->user_id, $location, $usertoken);
 
-                if (isset($locationData->location_id)) {
-                    $locationDetail = \CRM::crmV2($user->user_id, 'locations/' . $user->location_id, 'get', '', [], false, $token->location_id, $token);
+            if (isset($locationId->location_id)) {
+                if ($locationId->statusCode == 400) {
+                    \Log::error('Bad Request: Invalid locationId or accessToken', [
+                        'location_id' => $location,
+                        'user_id'     => login_id(),
+                        'response'    => $locationId,
+                    ]);
+                    return response()->json(['error' => 'Invalid locationId or accessToken'], 400);
+                }
 
-                    if (isset($locationDetail->location)) {
-                        $subAccountDetail = $locationDetail->location;
-                        $user->update([
-                            'name'  => $subAccountDetail->name ?? $user->name,
-                            'email' => $subAccountDetail->email ?? $user->email,
-                        ]);
-                    }
-
-                    $userToken = GhlAuth::where('user_id', $user->id)->first();
-                    if ($userToken) {
-                        $userToken->name    = $user->name ?? null;
-                        $userToken->user_id = $user->id ?? null;
-                        $userToken->save();
-                    }
-
-                    $apicall     = \CRM::crmV2($user->id, 'customFields', 'get', '', [], false, $userToken->location_id ?? null, $userToken);
-                    $arraydata[] = $apicall;
-                    if (isset($apicall->customFields)) {
-                        foreach ($apicall->customFields as $field) {
-                            if ($field->model == 'contact') {
-                                $customField = CustomField::where('cf_id', $field->id)
-                                    ->where('location_id', $field->locationId)
-                                    ->first();
-
-                                if ($customField) {
-                                    $customField->cf_id       = $field->id ?? null;
-                                    $customField->cf_name     = $field->name ?? null;
-                                    $customField->cf_key      = $field->fieldKey ?? null;
-                                    $customField->dataType    = $field->dataType ?? null;
-                                    $customField->location_id = $field->locationId ?? null;
-                                    $customField->save();
-                                } else {
-                                    $customField              = new CustomField();
-                                    $customField->cf_id       = $field->id ?? null;
-                                    $customField->cf_name     = $field->name ?? null;
-                                    $customField->cf_key      = $field->fieldKey ?? null;
-                                    $customField->dataType    = $field->dataType ?? null;
-                                    $customField->location_id = $field->locationId ?? null;
-                                    $customField->save();
-                                }
+                $ghl            = GhlAuth::where('location_id', $locationId->location_id)->where('user_id', login_id())->first();
+                $locationDetail = \CRM::crmV2(login_id(), 'locations/' . $ghl->location_id, 'get', '', [], false, $ghl->location_id, $ghl);
+                if (isset($locationDetail->location)) {
+                    $subAccountDetail = $locationDetail->location;
+                }
+                if ($subAccountDetail) {
+                    $ghl->name = $subAccountDetail->location->name ?? '';
+                    $ghl->save();
+                    \Log::info('Updated GhlAuth record', [
+                        'location_id' => $locationId->location_id,
+                    ]);
+                }
+                $apicall = \CRM::crmV2(login_id(), 'customFields', 'get', '', [], false, $ghl->location_id, $ghl, login_id());
+                if (isset($apicall->customFields)) {
+                    $apiData = $apicall->customFields;
+                    // dd($apiData);
+                    foreach ($apiData as $field) {
+                        // Find existing custom field record
+                        $customField = \App\Models\CustomField::where('cf_id', $field->id)->where('location_id', $field->locationId)->first();
+                        // Prepare data array with custom field values
+                        $customFieldData = [
+                            'cf_id'       => $field->id ?? null,
+                            'cf_name'     => $field->name ?? null,
+                            'cf_key'      => $field->fieldKey ?? null,
+                            'dataType'    => $field->dataType ?? null,
+                            'location_id' => $field->locationId ?? null,
+                        ];
+                        if ($customField) {
+                            foreach ($customFieldData as $key => $value) {
+                                $customField->$key = $value;
                             }
-
+                            $customField->save();
+                        } else {
+                            $customField = new CustomField();
+                            foreach ($customFieldData as $key => $value) {
+                                $customField->$key = $value;
+                            }
+                            $customField->save();
                         }
                     }
                 }
+
             }
 
             // ✅ Commit Transaction (Save Changes)
             DB::commit();
 
-            return response()->json(['data' => $arraydata, 'message' => 'Custom fields synced successfully']);
+            return response()->json(['success' => true, 'message' => 'Custom fields synced successfully']);
         } catch (\Exception $e) {
             // ❌ Rollback Transaction (Undo Changes)
             DB::rollBack();

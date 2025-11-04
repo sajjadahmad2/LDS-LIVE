@@ -84,7 +84,7 @@ class WebhookController extends Controller
         }
 
         $agentData->carrierType = $formattedCarrierTypes;
-        $agentData->email = $agent->email;
+        $agentData->email       = $agent->email;
         //dd($agent);
 
         return response()->json([
@@ -196,6 +196,39 @@ class WebhookController extends Controller
         // \Log::info('Contact from App', ['contact_id' => $contactId, 'state' => $state]);
         appendJobLog($contactId, 'ContactCreate from App');
         return response()->json(['message' => 'Webhook received'], 202);
+    }
+    protected function handleContactPartialSubmission(Request $request)
+    {
+        // Required fields
+        $requiredFields = ['email', 'state', 'type', 'lead_type'];
+
+        // Extract keys from request
+        $dataKeys = array_keys($request->all());
+
+        // Check if required fields exist in the request
+        foreach ($requiredFields as $field) {
+            if (! $request->has($field) || empty($request->input($field))) {
+                return response()->json(['message' => "Missing required field: {$field}"], 404);
+            }
+        }
+
+        // If all required fields exist, continue
+        if (count($dataKeys) === count($requiredFields) && empty(array_diff($dataKeys, $requiredFields))) {
+
+            $data       = $request->all();
+            $contactId  = $data['id'] ?? null; // adjust as per your structure
+            $campaign=LeadType::where('name', $data['lead_type'])->first();
+            $campaignId = $data['campaign_id'] ?? null;
+
+            appendJobLog($contactId, 'ContactCreate from Survey Script');
+
+            $this->contactWebhook($request, $campaignId, $data['lead_type'] ?? null);
+
+            return response()->json(['message' => 'Webhook received with exact fields'], 202);
+        }
+
+        // Fallback response
+        return response()->json(['message' => 'Invalid or incomplete data'], 404);
     }
 
     protected function handleCustomContactCreateType($contactId, $state, $request, $campaignId)
@@ -333,15 +366,15 @@ class WebhookController extends Controller
                             ->orWhere(DB::raw('TRIM(LOWER(short_form))'), strtolower($state));
                     })->where('lead_type', $leadTypeId);
                 })
-                ->with(['agent' => function ($query) use ($currentMonth, $currentDate,$leadTypeId) {
+                ->with(['agent' => function ($query) use ($currentMonth, $currentDate, $leadTypeId) {
                     $query->withCount([
-                        'contacts as monthly_contacts_count' => function ($q) use ($currentMonth,$leadTypeId) {
+                        'contacts as monthly_contacts_count' => function ($q) use ($currentMonth, $leadTypeId) {
                             $q->where('status', 'Sent')->where('lead_type', $leadTypeId)->whereMonth('created_at', $currentMonth);
                         },
-                        'contacts as daily_contacts_count'   => function ($q) use ($currentDate,$leadTypeId) {
+                        'contacts as daily_contacts_count'   => function ($q) use ($currentDate, $leadTypeId) {
                             $q->where('status', 'Sent')->where('lead_type', $leadTypeId)->whereDate('created_at', $currentDate);
                         },
-                        'contacts as total_contacts_count'   => function ($q) use ($leadTypeId)  {
+                        'contacts as total_contacts_count'   => function ($q) use ($leadTypeId) {
                             $q->where('status', 'Sent')->where('lead_type', $leadTypeId);
                         },
                     ]);
@@ -367,7 +400,7 @@ class WebhookController extends Controller
 
                     $agent     = $campaignAgent->agent;
                     $agentData = $agent->agentLeadTypes->first(); // safer than [0]
-                    //appendJobLog($contact_id, 'all agents found : ' . json_encode($agentData));
+                                                                  //appendJobLog($contact_id, 'all agents found : ' . json_encode($agentData));
 
                     if (! $agentData) {
                         // No lead type found for this agent, skip
