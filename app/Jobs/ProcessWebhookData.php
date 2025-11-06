@@ -518,12 +518,7 @@ class ProcessWebhookData implements ShouldQueue
             throw new \Exception("Invalid custom data format.");
         }
 
-        $location_id = $customData['location']['id'] ?? null;
-        $user        = User::where('agent_id', $agent->id ?? '')->first();
-
-        $locationId  = $user ? $user->location_id : null;
-        $location_id = $agent->destination_location ?? $customData['location']['id'] ?? null;
-
+        $location_id=$agent->agentLeadTypes->first()->destination_location;
         $customFields = CustomField::select('cf_name', 'cf_id', 'cf_key')
             ->where('location_id', $location_id)
             ->get();
