@@ -399,7 +399,17 @@ class CRM
     public static function isExpired($bd)
     {
 
-        return (isset($bd->error) && strtolower($bd->error) == 'unauthorized' && stripos($bd->error, 'authclass') === false) || (isset($bd->message) && ! is_object($bd->message) && strtolower($bd->message) == 'invalid jwt');
+        return (
+            isset($bd->error)
+            && is_string($bd->error)
+            && strtolower($bd->error) == 'unauthorized'
+            && stripos($bd->error, 'authclass') === false
+        ) || (
+            isset($bd->message)
+            && is_string($bd->message)
+            && strtolower($bd->message) == 'invalid jwt'
+        );
+
     }
 
     public static function crmV2($company_id, $urlmain = '', $method = 'get', $data = '', $headers = [], $json = false, $location_id = '', $location = null, $retries = 0)
