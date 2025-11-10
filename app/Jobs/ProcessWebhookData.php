@@ -10,7 +10,6 @@ use App\Models\GhlAuth;
 use App\Models\Log as Logs;
 use App\Models\ProccessContact;
 use App\Models\ReserveContact;
-use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -23,17 +22,17 @@ class ProcessWebhookData implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    protected $webhookdata, $campaign_id,$fromreserve=false,$agent=null;
+    protected $webhookdata, $campaign_id, $fromreserve = false, $agent = null;
 
     /**
      * Create a new job instance.
      */
-    public function __construct($webhookdata, $campaign_id,$fromreserve = false, $agent = null)
+    public function __construct($webhookdata, $campaign_id, $fromreserve = false, $agent = null)
     {
         $this->webhookdata = $webhookdata;
         $this->campaign_id = $campaign_id;
         $this->fromreserve = $fromreserve;
-        $this->agent = $agent;
+        $this->agent       = $agent;
     }
 
     /**
@@ -42,24 +41,24 @@ class ProcessWebhookData implements ShouldQueue
     public function handle()
     {
 
-        $webhookdata = $this->webhookdata;
-        $campaign_id = $this->campaign_id;
-        $fromreserve = $this->fromreserve;
+        $webhookdata   = $this->webhookdata;
+        $campaign_id   = $this->campaign_id;
+        $fromreserve   = $this->fromreserve;
         $selectedAgent = $this->agent;
-        $contact_id  = $webhookdata['contact_id'] ?? null;
-        $email       = $webhookdata['email'] ?? null;
-        $state       = $webhookdata['state'] ?? null;
+        $contact_id    = $webhookdata['contact_id'] ?? null;
+        $email         = $webhookdata['email'] ?? null;
+        $state         = $webhookdata['state'] ?? null;
         // $lead_type   = $webhookdata['customData']['lead_type'] ?? 1;
         // $leadTypeId  = findLeadTypeId($lead_type);
         \Log::info('ProcessWebhookData  Ye wala : ' . $contact_id);
         // Fetch campaign and agent details
         $mainCampaign = Campaign::find($campaign_id);
-        $leadTypeId = $mainCampaign->lead_type ?? NULL;
-        if($fromreserve){
-            $this->ProccessContact($webhookdata,$selectedAgent,$mainCampaign,$leadTypeId);
+        $leadTypeId   = $mainCampaign->lead_type ?? null;
+        if ($fromreserve) {
+            $this->ProccessContact($webhookdata, $selectedAgent, $mainCampaign, $leadTypeId);
             return;
         }
-        $agentIds     = CampaignAgent::where('campaign_id', $campaign_id)
+        $agentIds = CampaignAgent::where('campaign_id', $campaign_id)
             ->whereHas('agent.states', function ($query) use ($state, $leadTypeId) {
                 $query->whereHas('state', function ($q) use ($state) {
                     $q->where(DB::raw('TRIM(LOWER(state))'), strtolower($state))
@@ -147,15 +146,15 @@ class ProcessWebhookData implements ShouldQueue
         $agents = CampaignAgent::whereIn('agent_id', $agentIds)
             ->where('agent_id', '!=', $originalAgentId) // exclude original agent
             ->with([
-                'agent' => function ($query) use ($currentMonth, $currentDate,$leadTypeId) {
+                'agent' => function ($query) use ($currentMonth, $currentDate, $leadTypeId) {
                     $query->withCount([
-                        'contacts as monthly_contacts_count' => function ($q) use ($currentMonth,$leadTypeId) {
+                        'contacts as monthly_contacts_count' => function ($q) use ($currentMonth, $leadTypeId) {
                             $q->where('status', 'Sent')->where('lead_type', $leadTypeId)->whereMonth('created_at', $currentMonth);
                         },
-                        'contacts as daily_contacts_count'   => function ($q) use ($currentDate,$leadTypeId) {
+                        'contacts as daily_contacts_count'   => function ($q) use ($currentDate, $leadTypeId) {
                             $q->where('status', 'Sent')->where('lead_type', $leadTypeId)->whereDate('created_at', $currentDate);
                         },
-                        'contacts as total_contacts_count'   => function ($q)use($leadTypeId) {
+                        'contacts as total_contacts_count'   => function ($q) use ($leadTypeId) {
                             $q->where('status', 'Sent')->where('lead_type', $leadTypeId);
                         },
                     ]);
@@ -194,7 +193,7 @@ class ProcessWebhookData implements ShouldQueue
         }
 
         appendJobLog($contact_id, 'All agents are at full capacity. Sent to reserve.');
-        $this->ReserveContact($webhookdata, null, $mainCampaign, 'All agents full, lead sent to reserve.',$leadTypeId);
+        $this->ReserveContact($webhookdata, null, $mainCampaign, 'All agents full, lead sent to reserve.', $leadTypeId);
     }
 
     /**
@@ -313,15 +312,15 @@ class ProcessWebhookData implements ShouldQueue
         return CampaignAgent::whereIn('agent_id', $agentIds)
         // ->where('agent_id', '!=', $originalAgentId) // exclude original agent
             ->with([
-                'agent' => function ($query) use ($currentMonth, $currentDate,$leadTypeId) {
+                'agent' => function ($query) use ($currentMonth, $currentDate, $leadTypeId) {
                     $query->withCount([
-                        'contacts as monthly_contacts_count' => function ($q) use ($currentMonth,$leadTypeId) {
+                        'contacts as monthly_contacts_count' => function ($q) use ($currentMonth, $leadTypeId) {
                             $q->where('status', 'Sent')->where('lead_type', $leadTypeId)->whereMonth('created_at', $currentMonth);
                         },
-                        'contacts as daily_contacts_count'   => function ($q) use ($currentDate,$leadTypeId) {
+                        'contacts as daily_contacts_count'   => function ($q) use ($currentDate, $leadTypeId) {
                             $q->where('status', 'Sent')->where('lead_type', $leadTypeId)->whereDate('created_at', $currentDate);
                         },
-                        'contacts as total_contacts_count'   => function ($q) use ($leadTypeId){
+                        'contacts as total_contacts_count'   => function ($q) use ($leadTypeId) {
                             $q->where('status', 'Sent')->where('lead_type', $leadTypeId);
                         },
                     ]);
@@ -396,7 +395,8 @@ class ProcessWebhookData implements ShouldQueue
     {
 
         $customData = $contact->contact_json;
-        $tags       = ! empty($contact->tags) ? explode(',', (string) $contact->tags) : [];
+        // $tags       = ! empty($contact->tags) ? explode(',', (string) $contact->tags) : [];
+        $tags        = [];
         $leadTypeMap = [
             1 => 'ACA',
             2 => 'FE',
@@ -407,7 +407,7 @@ class ProcessWebhookData implements ShouldQueue
             $tags = array_merge($tags, [$leadTypeMap[$leadTypeId]]);
         }
 
-        $newdata    = [
+        $newdata = [
             'locationId'  => $agent->agentLeadTypes->first()->destination_location,
             'firstName'   => $contact->first_name ?? null,
             'lastName'    => $contact->last_name ?? null,
@@ -435,7 +435,7 @@ class ProcessWebhookData implements ShouldQueue
             $url                     = 'contacts';
             sleep(15);
             \Log::info('This ApiCall made by  this agent having id : ' . $agent->id ?? '' . 'and the location id: ' . $agent->agentLeadTypes->first()->destination_location ?? '');
-            appendJobLog($contact->contact_id, 'This ApiCall made by  this agent having id : ' . $agent->id ?? ''  . 'and the location id: ' . $agent->agentLeadTypes->first()->destination_location ?? '');
+            appendJobLog($contact->contact_id, 'This ApiCall made by  this agent having id : ' . $agent->id ?? '' . 'and the location id: ' . $agent->agentLeadTypes->first()->destination_location ?? '');
             $response = \App\Helpers\CRM::crmV2($agent->user_id, $url, 'POST', $newdata, [], false, $agent->agentLeadTypes->first()->destination_location);
 
             \Log::info('response.', ['url' => $url, 'response' => $response]);
@@ -518,7 +518,7 @@ class ProcessWebhookData implements ShouldQueue
             throw new \Exception("Invalid custom data format.");
         }
 
-        $location_id=$agent->agentLeadTypes->first()->destination_location;
+        $location_id  = $agent->agentLeadTypes->first()->destination_location;
         $customFields = CustomField::select('cf_name', 'cf_id', 'cf_key')
             ->where('location_id', $location_id)
             ->get();
@@ -645,7 +645,7 @@ class ProcessWebhookData implements ShouldQueue
     }
     protected function connectLocationFirst($agent)
     {
-        $token           = GhlAuth::where('user_id', $agent->user_id)->where('user_type','Company')->first();
+        $token           = GhlAuth::where('user_id', $agent->user_id)->where('user_type', 'Company')->first();
         $connectResponse = \App\Helpers\CRM::connectLocation($token->user_id, $agent->agentLeadTypes->first()->destination_location, $token);
         //dd($locationId);
         if (isset($connectResponse->location_id)) {
