@@ -232,9 +232,8 @@
                                             <label for="destination_location" class="form-label">Destination
                                                 Location</label>
                                             @if (isset($alllocations) && count($alllocations) > 0)
-                                                <select id="destination_location"
-                                                    name="lead_types[{{ $leadType->id }}][destination_location]"
-                                                    class="form-select" style="width: 100%;">
+                                                <select name="lead_types[{{ $leadType->id }}][destination_location]"
+                                                    class="form-select destination-location-select" style="width: 100%;">
                                                     @foreach ($alllocations as $location)
                                                         <option value="{{ $location->location_id }}">
                                                             {{ $location->location_name }}
@@ -242,8 +241,8 @@
                                                     @endforeach
                                                 </select>
                                             @else
-                                                <input type="text" id="destination_location"
-                                                    name="destination_location" class="form-control"
+                                                <input type="text" name="destination_location"
+                                                    class="form-control destination-location"
                                                     placeholder="Enter Destination Location">
                                             @endif
                                         </div>
@@ -401,7 +400,7 @@
 
             function initializeSelect2ForTabs() {
                 // Static select2 setup
-                $('.states-select, #destination_location, #agentaccess').select2({
+                $('.states-select, .destination-location-select, #agentaccess').select2({
                     tags: true,
                     width: '100%',
                     dropdownParent: $("#agentModal"),
@@ -437,7 +436,7 @@
                         function getVisibleOptions() {
                             return $(
                                     '.select2-results__option:not(.select2-results__option--highlight, .select2-select-all-btn)'
-                                    )
+                                )
                                 .map(function() {
                                     const id = $(this).data('data')?.id || $(this).text();
                                     return id;
@@ -520,7 +519,7 @@
 
             // Loader handling
             $(document).on('select2:opening',
-                '.carrier-type-select, .states-select, #destination_location, #agentaccess',
+                '.carrier-type-select, .states-select, .destination_location, #agentaccess',
                 function() {
                     $('.loader').show();
                 }).on('select2:open', function() {
@@ -529,7 +528,11 @@
                 }, 300);
             });
         });
-
+        // re-init when tab changes
+        $('a[data-bs-toggle="tab"]').on('shown.bs.tab', function(e) {
+            let target = $(e.target).attr('href'); // e.g. "#tab1"
+            initSelect2($(target));
+        });
         $(document).ready(function() {
 
             // Agent Access Hide or Show and clear values when unchecked
@@ -669,7 +672,6 @@
                 $('#name').val(name);
                 $('#email').val(email);
 
-
                 // ===== Role / access =====
                 if (userRole === true) {
                     $('#userRoleChecked').prop('checked', true);
@@ -685,7 +687,7 @@
 
                 // ===== Group incoming states & carriers by lead_type_id =====
                 const
-                    grouped = {}; // { [leadTypeId]: { states: [], carriers: [], limits: {}, consent: '', npm_number:'', cross_link:'' } }
+                grouped = {}; // { [leadTypeId]: { states: [], carriers: [], limits: {}, consent: '', npm_number:'', cross_link:'', destination_location:'', destination_webhook:'' } }
 
                 function ensure(key) {
                     if (!grouped[key]) grouped[key] = {
@@ -742,46 +744,64 @@
                     const key = c.lead_type_id != null ? c.lead_type_id : 'all';
                     ensure(key).cross_link = c.cross_link || '';
                 });
+
                 (Array.isArray(destination_location) ? destination_location : []).forEach(d => {
                     const key = d.lead_type_id != null ? d.lead_type_id : 'all';
                     ensure(key).destination_location = d.destination_location || '';
                 });
+
                 (Array.isArray(destination_webhook) ? destination_webhook : []).forEach(d => {
                     const key = d.lead_type_id != null ? d.lead_type_id : 'all';
                     ensure(key).destination_webhook = d.destination_webhook || '';
                 });
-                console.log(destination_location);
+
                 // ===== Apply values to each lead-type tab =====
                 $('[id^="leadtype-"]').each(function() {
                     const tabId = $(this).attr('id'); // e.g., leadtype-3
                     const leadTypeId = tabId.split('-')[1];
                     const group = grouped[leadTypeId] || grouped['all'] || {};
-                    console.log(group);
-                    // Select fields
+
+                    // States
                     $(this).find(`[name="lead_types[${leadTypeId}][states][]"]`).val(group.states || [])
                         .trigger('change');
+
+                    // Carrier Types
                     $(this).find(`[name="lead_types[${leadTypeId}][carrier_type][]"]`).val(group
                         .carriers || []).trigger('change');
 
-                    // Input fields
+                    // Limits
                     $(this).find(`[name="lead_types[${leadTypeId}][daily_limit]"]`).val(group
                         .daily_limit || '');
                     $(this).find(`[name="lead_types[${leadTypeId}][monthly_limit]"]`).val(group
                         .monthly_limit || '');
                     $(this).find(`[name="lead_types[${leadTypeId}][total_limit]"]`).val(group
                         .total_limit || '');
+
+                    // Consent & Other Fields
                     $(this).find(`[name="lead_types[${leadTypeId}][consent]"]`).val(group.consent ||
-                        '');
+                    '');
                     $(this).find(`[name="lead_types[${leadTypeId}][npm_number]"]`).val(group
                         .npm_number || '');
                     $(this).find(`[name="lead_types[${leadTypeId}][cross_link]"]`).val(group
                         .cross_link || '');
                     $(this).find(`[name="lead_types[${leadTypeId}][destination_webhook]"]`).val(group
                         .destination_webhook || '');
-                    $(this).find(`[name="lead_types[${leadTypeId}][destination_location]"]`).val(group
-                        .destination_location || '');
+
+                    // ===== Destination Location =====
+                    const $dest = $(this).find(
+                        `[name="lead_types[${leadTypeId}][destination_location]"]`);
+                    if (group.destination_location) {
+                        // If option doesn't exist, create it
+                        if ($dest.find(`option[value="${group.destination_location}"]`).length === 0) {
+                            const newOption = new Option(group.destination_location, group
+                                .destination_location, true, true);
+                            $dest.append(newOption);
+                        }
+                        $dest.val(group.destination_location).trigger('change');
+                    }
                 });
             };
+
 
 
             window.deleteAgent = function(agentId) {
