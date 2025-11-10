@@ -309,11 +309,11 @@
 
 
 
-    function savaData(id, name, email, state,leadtype) {
+    function savaData(id, name, email, state,leadtype,campaignid) {
         console.log(id, name, email, state,leadtype);
         let leadId = id; // Assign leadId
 
-        let url = `/admin/state/reserve/${state}/${leadtype}`; // Ensure the correct API URL
+        let url = `/admin/state/reserve/${state}/${leadtype}/${campaignid}`; // Ensure the correct API URL
 
         $.ajax({
             url: url,

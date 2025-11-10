@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class CampaignAgent extends Model
 {
     use HasFactory;
-
+    protected $table = 'campaign_agents';
     protected $fillable = ['agent_id', 'campaign_id', 'user_id','weightage','priority'];
 
     public function agent()

@@ -36,7 +36,7 @@ class Agent extends Model
     }
     public function campaigns()
     {
-        return $this->belongsToMany(Campaign::class, 'campaigns_agents');
+        return $this->belongsToMany(Campaign::class, 'campaign_agents');
     }
 
     public function contacts()

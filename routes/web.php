@@ -369,7 +369,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/reserve/contact' , [ReserveContactController::class,'index'])->name('reserve.contact');
         Route::get('/sent/contacts' , [ContactController::class,'index'])->name('sent.contact');
         Route::get('/campaign/show' , [CampaignController::class,'campaignShow'])->name('campaign.show');
-        Route::get('state/reserve/{state?}/{leadtype?}', [ReserveContactController::class, 'fetchState']);
+        Route::get('state/reserve/{state?}/{leadtype?}/{campaignid?}', [ReserveContactController::class, 'fetchState']);
 
         Route::post('/assign-agent', [ReserveContactController::class, 'assignAgent']);
         //fro Searching
