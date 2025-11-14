@@ -5,6 +5,7 @@ use App\Http\Controllers\Controller;
 use App\Jobs\ProcessWebhookData;
 use App\Models\Agent;
 use App\Models\Campaign;
+use App\Models\CampaignAgent;
 use App\Models\Contact;
 use App\Models\Log;
 use App\Models\ReserveContact;
