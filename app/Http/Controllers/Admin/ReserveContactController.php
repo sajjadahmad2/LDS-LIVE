@@ -209,7 +209,9 @@ class ReserveContactController extends Controller
         // 5️⃣ Optionally fetch related campaign for this agent (optional)
         $campaign = Campaign::Where('id', $reserveContact->campaign_id ?? null)->first();
         if (! $campaign) {
-            $campaign = Campaign::where('agent_id', $agentId)->first();
+            $campaignid = Campaign::where('lead_type', $leadTypeId)->first()->id;
+            $campaignAgentid   = CampaignAgent::Where('agent_id', $agent->id)->where('campaign_id', $campaignid)->first()->campaign_id;
+            $campaign = Campaign::Where('id', $campaignAgentid)->first();
         }
         if (! $campaign) {
             return response()->json(['message' => 'Campaign not found!'], 404);
