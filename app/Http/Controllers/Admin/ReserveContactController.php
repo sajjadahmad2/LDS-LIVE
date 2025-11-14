@@ -207,10 +207,14 @@ class ReserveContactController extends Controller
             return response()->json(['message' => 'Lead not found!'], 404);
         }
         // 5️⃣ Optionally fetch related campaign for this agent (optional)
-        $campaign = Campaign::Where('campaign_id', $reserveContact->campaign_id)->first();
+        $campaign = Campaign::Where('id', $reserveContact->campaign_id ?? null)->first();
+        if (! $campaign) {
+            $campaign = Campaign::where('agent_id', $agentId)->first();
+        }
         if (! $campaign) {
             return response()->json(['message' => 'Campaign not found!'], 404);
         }
+
         $reserveContact = json_decode(base64_decode($reserveContact->contact_json), true);
 
         // Process contact

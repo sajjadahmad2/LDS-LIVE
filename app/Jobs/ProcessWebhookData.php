@@ -90,9 +90,22 @@ class ProcessWebhookData implements ShouldQueue
      */
     private function validateInitialConditions($webhookdata, $contact_id, $mainCampaign, $agentIds, $leadTypeId)
     {
-        if (count($agentIds) === 0 || empty($mainCampaign) || (! isset($webhookdata['state']) && (! isset($contact_id) || is_null($contact_id)))) {
-            appendJobLog($contact_id, 'Missing agent, campaign or state, contact sent to reserve.');
-            $this->ReserveContact($webhookdata, null, $mainCampaign, 'Missing agent, campaign, or state.', $leadTypeId);
+        $missingReasons = [];
+
+        if (count($agentIds) === 0) {
+            $missingReasons[] = 'No agent available';
+        }
+        if (empty($mainCampaign)) {
+            $missingReasons[] = 'No campaign found';
+        }
+        if (! isset($webhookdata['state']) && (! isset($contact_id) || is_null($contact_id))) {
+            $missingReasons[] = 'Missing state or contact_id';
+        }
+
+        if (! empty($missingReasons)) {
+            $reasonText = implode(', ', $missingReasons);
+            appendJobLog($contact_id, "Contact sent to reserve: {$reasonText}");
+            $this->ReserveContact($webhookdata, null, $mainCampaign, $reasonText, $leadTypeId);
             return false;
         }
         return true;
