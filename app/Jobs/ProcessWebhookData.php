@@ -409,7 +409,8 @@ class ProcessWebhookData implements ShouldQueue
 
         $customData = $contact->contact_json;
         // $tags       = ! empty($contact->tags) ? explode(',', (string) $contact->tags) : [];
-        $tags        = [];
+        $tags = !empty($agent->name) ? [$agent->name] : [];
+
         $leadTypeMap = [
             1 => 'ACA',
             2 => 'FE',
