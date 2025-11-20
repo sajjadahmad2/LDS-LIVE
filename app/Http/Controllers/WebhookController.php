@@ -8,7 +8,8 @@ use App\Models\AgentCarrierType;     // Model for Agent table
 use App\Models\AgentLeadType;        // Model for Contact table
 use App\Models\Campaign;
 use App\Models\CampaignAgent;
-                                // Model for User table
+use App\Models\State;                     // Model for User table
+use App\Models\AgentState;                     // Model for User table
 use App\Models\Contact;         // Model for ReserveContact table
 use App\Models\Log as Logs;     // Model for ReserveContact table
 use App\Models\ProccessContact; // Model for Agent Carrier Type table
@@ -52,6 +53,7 @@ class WebhookController extends Controller
         if (! $proccessContact) {
             return response()->json(['error' => 'Contact with this email is not found'], 404);
         }
+
         $agent = Agent::where('id', $proccessContact->agent_id ?? '')->first();
         if (! $agent) {
             return response()->json(['error' => 'Agent not found'], 404);
@@ -68,6 +70,13 @@ class WebhookController extends Controller
         }
         if (is_null($agent)) {
             return response()->json(['error' => 'Agent not found'], 404);
+        }
+        if ($validated['lead_type'] === 'Medicare') {
+            $agentData = $this->getAgentDetailsFromPortal($agent->email, $proccessContact->state);
+            return response()->json([
+                'success'    => true,
+                'agent_data' => $agentData,
+            ]);
         }
         $agentData             = AgentLeadType::select('consent', 'npm_number', 'cross_link')->where('agent_id', $agent->id)->where('lead_type', $leadTypeId)->first();
         $formattedCarrierTypes = [];
@@ -92,6 +101,55 @@ class WebhookController extends Controller
             'agent_data' => $agentData,
         ]);
     }
+    public function getAgentDetailsFromPortal($agent = null, $state = null)
+    {
+        if (! $agent || ! $state) {
+            return null;
+        }
+
+        // Lowercase the input state
+        $stateLower = strtolower($state);
+
+        // Get state abbreviation from DB
+        $stateRecord = State::whereRaw('LOWER(state) = ?', [$stateLower])->first();
+        if (! $stateRecord) {
+            return null; // state not found
+        }
+
+        $stateAbbr = $stateRecord->short_form; // e.g., 'FL'
+
+        // API endpoint with state abbreviation
+        $url = "https://medicareagents.agentemp.com/api/public/agents/{$agent}?state={$stateAbbr}";
+
+        // Initialize cURL
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPGET, true);
+
+        // Execute request
+        $response = curl_exec($ch);
+
+        // Check for errors
+        if ($response === false) {
+            curl_close($ch);
+            return null;
+        }
+
+        // Close cURL
+        curl_close($ch);
+
+        // Decode JSON response
+        $data = json_decode($response, true);
+
+        // Optional: check if response has expected structure
+        if (! isset($data['email']) || ! isset($data['statesWithCarriers'])) {
+            return null;
+        }
+
+        return $data;
+    }
+
     public function getAgentConsentAgain(Request $request)
     {
         $validated = $request->validate([
@@ -181,6 +239,9 @@ class WebhookController extends Controller
 
     protected function handleContactCreateType($data, $dataKeys, $requiredFields, $contactId, $state, $request, $campaignId)
     {
+        if (isset($data['lead_type']) && $data['lead_type'] === 'Medicare') {
+            $requiredFields[] = 'lead_type';
+        }
         if (count($dataKeys) === count($requiredFields) && empty(array_diff($dataKeys, $requiredFields))) {
             // \Log::info('Contact from Survey Script', [
             //     'email' => $data['email'],
@@ -196,39 +257,6 @@ class WebhookController extends Controller
         // \Log::info('Contact from App', ['contact_id' => $contactId, 'state' => $state]);
         appendJobLog($contactId, 'ContactCreate from App');
         return response()->json(['message' => 'Webhook received'], 202);
-    }
-    protected function handleContactPartialSubmission(Request $request)
-    {
-        // Required fields
-        $requiredFields = ['email', 'state', 'type', 'lead_type'];
-
-        // Extract keys from request
-        $dataKeys = array_keys($request->all());
-
-        // Check if required fields exist in the request
-        foreach ($requiredFields as $field) {
-            if (! $request->has($field) || empty($request->input($field))) {
-                return response()->json(['message' => "Missing required field: {$field}"], 404);
-            }
-        }
-
-        // If all required fields exist, continue
-        if (count($dataKeys) === count($requiredFields) && empty(array_diff($dataKeys, $requiredFields))) {
-
-            $data       = $request->all();
-            $contactId  = $data['id'] ?? null; // adjust as per your structure
-            $campaign=LeadType::where('name', $data['lead_type'])->first();
-            $campaignId = $data['campaign_id'] ?? null;
-
-            appendJobLog($contactId, 'ContactCreate from Survey Script');
-
-            $this->contactWebhook($request, $campaignId, $data['lead_type'] ?? null);
-
-            return response()->json(['message' => 'Webhook received with exact fields'], 202);
-        }
-
-        // Fallback response
-        return response()->json(['message' => 'Invalid or incomplete data'], 404);
     }
 
     protected function handleCustomContactCreateType($contactId, $state, $request, $campaignId)
@@ -504,104 +532,56 @@ class WebhookController extends Controller
             \Log::info("Created new ReserveContact with contact ID: {$contact_id}");
         }
     }
-
-    protected function findAgentOld($proccessContact, $camid = null)
+    public function updateAgentStatesFromPortal(Request $request)
     {
-        $state      = $proccessContact->state;
-        $contact_id = $proccessContact->contact_id;
+        $validated = $request->validate([
+            'email'  => 'required|email',
+            'states' => 'nullable|array', // short_form codes
+        ]);
 
-        \Log::info('Agent Find for ' . $proccessContact->state . ' and Campaign ' . $camid);
-
-        if (! is_null($state)) {
-            $user_id      = null;
-            $currentMonth = Carbon::now('America/Chicago')->month;
-            $currentDate  = Carbon::now('America/Chicago')->format('Y-m-d');
-            $mainCampaign = Campaign::find($camid);
-            $agentIds     = CampaignAgent::where('campaign_id', $camid)->pluck('agent_id')->toArray();
-
-            // Find agents matching the state and campaign
-            $agents = Agent::whereHas('states', function ($query) use ($state) {
-                $query->where(DB::raw('TRIM(LOWER(state))'), $state)
-                    ->orWhere(DB::raw('TRIM(LOWER(short_form))'), $state);
-            })
-                ->whereIn('id', $agentIds)
-                ->withCount([
-                    'contacts as monthly_contacts_count' => function ($query) use ($currentMonth) {
-                        $query->where('status', 'Sent')->whereMonth('created_at', $currentMonth);
-                    },
-                    'contacts as daily_contacts_count'   => function ($query) use ($currentDate) {
-                        $query->where('status', 'Sent')->whereDate('created_at', $currentDate);
-                    },
-                    'contacts as total_contacts_count'   => function ($query) {
-                        $query->where('status', 'Sent');
-                    },
-                ])
-                ->orderBy('priority', 'asc') // Sort by priority first (lower number = higher priority)
-                ->orderByDesc('weightage')   // Within same priority, sort by weightage
-                ->get();
-            if ($agents->isEmpty()) {
-                \Log::info('No matching agents found, sending to reserve.');
-                // $this->ReserveContact($proccessContact, null, $mainCampaign);
-                return;
-            }
-            $filteredAgents = [];
-            $weightagefull  = true;
-
-            foreach ($agents as $agent) {
-                $total   = $agent->total_contacts_count < $agent->total_limit;
-                $monthly = $agent->monthly_contacts_count < $agent->monthly_limit;
-                $daily   = $agent->daily_contacts_count < $agent->daily_limit;
-
-                if ($total && $monthly && $daily) {
-                    $filteredAgents[] = $agent;
-                    if ($agent->agent_count_weightage < $agent->weightage) {
-                        $proccessContact->agent_id = $agent->id;
-                        $proccessContact->save();
-                        $agent->increment('agent_count_weightage', 1);
-                        $weightagefull = false;
-                        break;
-                    }
-                }
-            }
-
-            \Log::info(["filteragents" => json_encode($filteredAgents)]);
-
-            // Step 4: If all agents are at max weightage, reset weightage & continue
-            if ($weightagefull && count($filteredAgents) > 0) {
-                $agentsCollection = collect($filteredAgents);
-
-                // Reset agent_count_weightage for all filtered agents
-                $agentsCollection->each(function ($agent) {
-                    $agent->agent_count_weightage = 0;
-                    $agent->save();
-                });
-
-                // Find the highest priority (smallest number means highest priority)
-                $minPriority = $agentsCollection->min('priority');
-
-                // Get agents that match the highest priority
-                $topAgents = $agentsCollection->where('priority', $minPriority);
-
-                // Pick the agent with the highest weightage among them
-                $topAgent = $topAgents->sortByDesc('weightage')->first();
-
-                if ($topAgent) {
-                    $proccessContact->agent_id = $topAgent->id;
-                    $proccessContact->save();
-
-                    \Log::info('Agent found. Contact assigned. Agent ID: ' . $topAgent->id);
-
-                    // Increment agent weightage count
-                    $topAgent->increment('agent_count_weightage', 1);
-                }
-            }
-
-            // // Step 5: If no matching agents found, send to reserve
-            // if (empty($filteredAgents) && !is_null($contact_id)) {
-            //     \Log::info('No Agent Found or Limit Reached, Sent to Reserve');
-            //     $this->ReserveContact($proccessContact, null, $mainCampaign);
-            // }
+        // 1. Find agent by email
+        $agent = Agent::where('email', $validated['email'])->first();
+        if (! $agent) {
+            return response()->json(['message' => 'Data received successfully']);
         }
+
+        $agentId = $agent->id;
+
+        // 2. If states array is empty → delete all states
+        if (empty($validated['states'])) {
+            AgentState::where('agent_id', $agentId)
+                ->where('lead_type', 2)
+                ->delete();
+
+            return response()->json(['message' => 'Data received successfully']);
+        }
+
+        // 3. Lowercase incoming short_form values
+        $incomingShortForms = array_map('strtolower', $validated['states']);
+
+        // 4. Match DB short_form (case-insensitive)
+        $matchedStates = State::whereIn(\DB::raw('LOWER(short_form)'), $incomingShortForms)->get();
+
+        // Get IDs
+        $newStateIds = $matchedStates->pluck('id')->toArray();
+
+        // 5. Delete old records
+        AgentState::where('agent_id', $agentId)
+            ->where('lead_type', 2)
+            ->delete();
+
+        // 6. Insert new state records
+        foreach ($newStateIds as $stateId) {
+            AgentState::create([
+                'agent_id'  => $agentId,
+                'state_id'  => $stateId,
+                'lead_type' => 2,
+                'user_id'   => 128,
+            ]);
+        }
+
+        // 7. Always return this
+        return response()->json(['message' => 'Data received successfully']);
     }
 
 }
