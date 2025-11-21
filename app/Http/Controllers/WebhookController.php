@@ -75,7 +75,7 @@ class WebhookController extends Controller
         if ($validated['lead_type'] === 'Medicare') {
             $agentData = $this->getAgentDetailsFromPortal($agent->email, $proccessContact->state);
 
-            dd($agentData);
+
             return response()->json([
                 'success'    => true,
                 'agent_data' => $agentData,
