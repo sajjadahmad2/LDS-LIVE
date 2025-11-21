@@ -67,13 +67,15 @@ class WebhookController extends Controller
             }
             // $leadTypeId = Campaign::where('id', $proccessContact->campaign_id)->first()->lead_type ?? 1;
             $agent      = $this->FindAnotherAgent($proccessContact, $proccessContact->campaign_id, $leadTypeId, $agentids);
-                dd($agent,$proccessContact->campaign_id,$leadTypeId,$agentids);
+
         }
         if (is_null($agent)) {
             return response()->json(['error' => 'Agent not found'], 404);
         }
         if ($validated['lead_type'] === 'Medicare') {
             $agentData = $this->getAgentDetailsFromPortal($agent->email, $proccessContact->state);
+
+            dd($agentData);
             return response()->json([
                 'success'    => true,
                 'agent_data' => $agentData,
