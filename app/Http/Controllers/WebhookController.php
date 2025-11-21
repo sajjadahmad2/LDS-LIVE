@@ -87,8 +87,8 @@ class WebhookController extends Controller
         // }
         if ($validated['lead_type'] === 'Medicare') {
             $agentData = [];
-            foreach ($listofAgents as $agent) {
-                $agentData[] = $this->getAgentDetailsFromPortal($agent->email, $proccessContact->state);
+            foreach ($result['agents'] as $agent) {
+                $agentData[] = $this->getAgentDetailsFromPortal($agent, $proccessContact->state);
             }
             return response()->json([
                 'success'    => true,
@@ -533,67 +533,124 @@ class WebhookController extends Controller
         \Log::info('Agent Find for ' . $state . ' and Campaign ' . $camid);
         appendJobLog($contact_id, 'Contact Came to Agent Find for ' . $state . ' and Campaign ' . $camid . ' and Campaign ' . $leadTypeId);
 
-        if (! is_null($state)) {
+        if (is_null($state)) {
+            return [
+                'success' => false,
+                'reason'  => 'State is missing in contact.',
+            ];
+        }
 
-            $currentMonth = Carbon::now('America/Chicago')->month;
-            $currentDate  = Carbon::now('America/Chicago')->format('Y-m-d');
+        $currentMonth = Carbon::now('America/Chicago')->month;
+        $currentDate  = Carbon::now('America/Chicago')->format('Y-m-d');
 
-            $query = CampaignAgent::where('campaign_id', $camid);
+        // 1) Check: any campaign agents exist?
+        $baseCampaignAgents = CampaignAgent::where('campaign_id', $camid)->get();
+        if ($baseCampaignAgents->isEmpty()) {
+            return [
+                'success' => false,
+                'reason'  => 'No agents mapped to this campaign.',
+            ];
+        }
 
-            if (! empty($oldAgentIds)) {
-                $query->whereNotIn('agent_id', $oldAgentIds);
+        // Remove banned agents (oldAgentIds)
+        if (! empty($oldAgentIds)) {
+            $baseCampaignAgents = $baseCampaignAgents->whereNotIn('agent_id', $oldAgentIds);
+            if ($baseCampaignAgents->isEmpty()) {
+                return [
+                    'success' => false,
+                    'reason'  => 'All agents excluded by oldAgentIds.',
+                ];
+            }
+        }
+
+        // 2) Filter: agents matching the state + lead type
+        $campaignAgents = CampaignAgent::where('campaign_id', $camid)
+            ->whereNotIn('agent_id', $oldAgentIds)
+            ->whereHas('agent.states', function ($query) use ($state, $leadTypeId) {
+                $query->whereHas('state', function ($q) use ($state) {
+                    $q->where(DB::raw('TRIM(LOWER(state))'), strtolower($state))
+                        ->orWhere(DB::raw('TRIM(LOWER(short_form))'), strtolower($state));
+                })->where('lead_type', $leadTypeId);
+            })
+            ->with([
+                'agent'                => function ($q) use ($currentMonth, $currentDate, $leadTypeId) {
+                    $q->withCount([
+                        'contacts as monthly_contacts_count' => function ($x) use ($currentMonth, $leadTypeId) {
+                            $x->where('status', 'Sent')
+                                ->where('lead_type', $leadTypeId)
+                                ->whereMonth('created_at', $currentMonth);
+                        },
+                        'contacts as daily_contacts_count'   => function ($x) use ($currentDate, $leadTypeId) {
+                            $x->where('status', 'Sent')
+                                ->where('lead_type', $leadTypeId)
+                                ->whereDate('created_at', $currentDate);
+                        },
+                        'contacts as total_contacts_count'   => function ($x) use ($leadTypeId) {
+                            $x->where('status', 'Sent')
+                                ->where('lead_type', $leadTypeId);
+                        },
+                    ]);
+                },
+                'agent.agentLeadTypes' => function ($q) use ($leadTypeId) {
+                    $q->where('lead_type', $leadTypeId);
+                },
+            ])
+            ->orderBy('priority', 'asc')
+            ->orderByDesc('weightage')
+            ->get();
+
+        if ($campaignAgents->isEmpty()) {
+            return [
+                'success' => false,
+                'reason'  => 'No agent matches this state.',
+            ];
+        }
+
+        // 3) Check if any agent has this lead type
+        $agentsWithLeadType = $campaignAgents->filter(function ($ca) {
+            return $ca->agent->agentLeadTypes->first();
+        });
+
+        if ($agentsWithLeadType->isEmpty()) {
+            return [
+                'success' => false,
+                'reason'  => 'No agent has this lead type.',
+            ];
+        }
+
+        // Final grouping
+        $groupedAgents  = $campaignAgents->groupBy('priority');
+        $eligibleAgents = collect();
+        $capacityFound  = false;
+
+        foreach ($groupedAgents as $priority => $priorityAgents) {
+
+            $weightageFull = true;
+
+            foreach ($priorityAgents as $campaignAgent) {
+
+                $agent     = $campaignAgent->agent;
+                $agentData = $agent->agentLeadTypes->first();
+                if (! $agentData) {
+                    continue;
+                }
+
+                $total   = $agent->total_contacts_count < $agentData->total_limit;
+                $monthly = $agent->monthly_contacts_count < $agentData->monthly_limit;
+                $daily   = $agent->daily_contacts_count < $agentData->daily_limit;
+
+                if ($total && $monthly && $daily) {
+                    $weightageFull = false;
+                    $capacityFound = true;
+                    $eligibleAgents->push($campaignAgent);
+                }
             }
 
-            $agentIds = $query->pluck('agent_id')->toArray();
-
-            $campaignAgents = CampaignAgent::where('campaign_id', $camid)
-                ->whereHas('agent.states', function ($query) use ($state, $leadTypeId) {
-                    $query->whereHas('state', function ($q) use ($state) {
-                        $q->where(DB::raw('TRIM(LOWER(state))'), strtolower($state))
-                            ->orWhere(DB::raw('TRIM(LOWER(short_form))'), strtolower($state));
-                    })->where('lead_type', $leadTypeId);
-                })
-                ->with([
-                    'agent'                => function ($query) use ($currentMonth, $currentDate, $leadTypeId) {
-                        $query->withCount([
-                            'contacts as monthly_contacts_count' => function ($q) use ($currentMonth, $leadTypeId) {
-                                $q->where('status', 'Sent')
-                                    ->where('lead_type', $leadTypeId)
-                                    ->whereMonth('created_at', $currentMonth);
-                            },
-                            'contacts as daily_contacts_count'   => function ($q) use ($currentDate, $leadTypeId) {
-                                $q->where('status', 'Sent')
-                                    ->where('lead_type', $leadTypeId)
-                                    ->whereDate('created_at', $currentDate);
-                            },
-                            'contacts as total_contacts_count'   => function ($q) use ($leadTypeId) {
-                                $q->where('status', 'Sent')
-                                    ->where('lead_type', $leadTypeId);
-                            },
-                        ]);
-                    },
-                    'agent.agentLeadTypes' => function ($query) use ($leadTypeId) {
-                        $query->where('lead_type', $leadTypeId);
-                    },
-                ])
-                ->orderBy('priority', 'asc')
-                ->orderByDesc('weightage')
-                ->get();
-
-            $groupedAgents = $campaignAgents->groupBy('priority');
-
-            // NEW: collect eligible agents (NO ASSIGNMENT)
-            $eligibleAgents = collect();
-
-            foreach ($groupedAgents as $priority => $priorityAgents) {
-
-                $weightageFull = true;
-
+            if ($weightageFull) {
                 foreach ($priorityAgents as $campaignAgent) {
 
                     $agent     = $campaignAgent->agent;
                     $agentData = $agent->agentLeadTypes->first();
-
                     if (! $agentData) {
                         continue;
                     }
@@ -603,71 +660,63 @@ class WebhookController extends Controller
                     $daily   = $agent->daily_contacts_count < $agentData->daily_limit;
 
                     if ($total && $monthly && $daily) {
-                        $weightageFull = false;
+                        $campaignAgent->update(['agent_count_weightage' => 0]);
+                    }
+                }
 
-                        // NOW we DO NOT assign, only collect
+                // Retry after reset
+                foreach ($priorityAgents as $campaignAgent) {
+
+                    $agent     = $campaignAgent->agent;
+                    $agentData = $agent->agentLeadTypes->first();
+                    if (! $agentData) {
+                        continue;
+                    }
+
+                    $total   = $agent->total_contacts_count < $agentData->total_limit;
+                    $monthly = $agent->monthly_contacts_count < $agentData->monthly_limit;
+                    $daily   = $agent->daily_contacts_count < $agentData->daily_limit;
+
+                    if ($total && $monthly && $daily) {
+                        $capacityFound = true;
                         $eligibleAgents->push($campaignAgent);
                     }
                 }
-
-                if ($weightageFull) {
-                    foreach ($priorityAgents as $campaignAgent) {
-
-                        $agent     = $campaignAgent->agent;
-                        $agentData = $agent->agentLeadTypes->first();
-                        if (! $agentData) {
-                            continue;
-                        }
-
-                        $total   = $agent->total_contacts_count < $agentData->total_limit;
-                        $monthly = $agent->monthly_contacts_count < $agentData->monthly_limit;
-                        $daily   = $agent->daily_contacts_count < $agentData->daily_limit;
-
-                        if ($total && $monthly && $daily) {
-                            $campaignAgent->update(['agent_count_weightage' => 0]);
-                        }
-                    }
-
-                    // Retry collecting after reset
-                    foreach ($priorityAgents as $campaignAgent) {
-
-                        $agent     = $campaignAgent->agent;
-                        $agentData = $agent->agentLeadTypes->first();
-                        if (! $agentData) {
-                            continue;
-                        }
-
-                        $total   = $agent->total_contacts_count < $agentData->total_limit;
-                        $monthly = $agent->monthly_contacts_count < $agentData->monthly_limit;
-                        $daily   = $agent->daily_contacts_count < $agentData->daily_limit;
-
-                        if ($total && $monthly && $daily) {
-
-                            // still NOT assigning, just collecting
-                            $eligibleAgents->push($campaignAgent);
-
-                        }
-                    }
-                }
             }
-
-            // FINAL SORT (priority asc, daily remaining desc)
-            $sorted = $eligibleAgents->sortBy([
-                ['priority', 'asc'],
-                [function ($ca) {
-                    $agent     = $ca->agent;
-                    $agentData = $agent->agentLeadTypes->first();
-                    return $agentData->daily_limit - $agent->daily_contacts_count;
-                }, 'desc'],
-            ]);
-
-            // RETURN EMAIL LIST ONLY
-            return $sorted->map(function ($ca) {
-                return $ca->agent->email;
-            })->values()->toArray();
         }
 
-        return [];
+        if (! $capacityFound) {
+            return [
+                'success' => false,
+                'reason'  => 'All eligible agents have reached their limits (daily/monthly/total).',
+            ];
+        }
+
+        // Final sort: priority ASC, daily remaining DESC
+        $sorted = $eligibleAgents->sortBy([
+            ['priority', 'asc'],
+            [function ($ca) {
+                $agent     = $ca->agent;
+                $agentData = $agent->agentLeadTypes->first();
+                return $agentData->daily_limit - $agent->daily_contacts_count;
+            }, 'desc'],
+        ]);
+
+        $emails = $sorted->map(function ($ca) {
+            return $ca->agent->email;
+        })->values()->toArray();
+
+        if (empty($emails)) {
+            return [
+                'success' => false,
+                'reason'  => 'No eligible agents found after filtering.',
+            ];
+        }
+
+        return [
+            'success' => true,
+            'agents'  => $emails,
+        ];
     }
 
     protected function ReserveContact($data, $agent = null, $campaign, $leadTypeId)
