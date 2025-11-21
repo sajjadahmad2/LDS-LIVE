@@ -87,9 +87,8 @@ class WebhookController extends Controller
         // }
         if ($validated['lead_type'] === 'Medicare') {
             $agentData = [];
-            foreach ($result['agents'] as $agent) {
-                $agentData[] = $this->getAgentDetailsFromPortal($agent, $proccessContact->state);
-            }
+            $allAgents=$this->getAgentDetailsFromPortal(null,$proccessContact->state);
+        dd($allAgents);
             return response()->json([
                 'success'    => true,
                 'agent_data' => $agentData,
@@ -120,7 +119,7 @@ class WebhookController extends Controller
     }
     public function getAgentDetailsFromPortal($agent = null, $state = null)
     {
-        if (! $agent || ! $state) {
+        if (! $state) {
             return null;
         }
 
@@ -136,7 +135,7 @@ class WebhookController extends Controller
         $stateAbbr = $stateRecord->short_form; // e.g., 'FL'
 
         // API endpoint with state abbreviation
-        $url = "https://medicareagents.agentemp.com/api/public/agents/{$agent}?state={$stateAbbr}";
+        $url = "https://medicareagents.agentemp.com/api/public/agents?state={$stateAbbr}";
 
         // Initialize cURL
         $ch = curl_init();
@@ -160,7 +159,7 @@ class WebhookController extends Controller
         $data = json_decode($response, true);
 
         // Optional: check if response has expected structure
-        if (! isset($data['email']) || ! isset($data['statesWithCarriers'])) {
+        if (! isset($data['agents']) ) {
             return null;
         }
 
@@ -792,6 +791,32 @@ class WebhookController extends Controller
         }
 
         // 7. Always return this
+        return response()->json(['message' => 'Data received successfully']);
+    }
+    public function updateProcessContactWithSelectedAgent(Request $request)
+    {
+        $validated = $request->validate([
+            'agent_email'  => 'required|email',
+            'lead_email' => 'required|email',
+        ]);
+
+        // 1. Find agent by email
+        $agent = Agent::where('email', $validated['agent_email'])->first();
+        if (! $agent) {
+            return response()->json(['message' => 'Agent not found']);
+        }
+
+        $agentId = $agent->id;
+
+        // 2. Find lead by email
+        $lead = ProcessContact::where('email', $validated['lead_email'])->first();
+        if (! $lead) {
+            return response()->json(['message' => 'Lead not found']);
+        }
+
+        $lead->agent_id = $agentId;
+        $lead->save();
+
         return response()->json(['message' => 'Data received successfully']);
     }
 

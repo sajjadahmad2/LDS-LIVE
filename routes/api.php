@@ -27,3 +27,4 @@ Route::middleware([])->get('agent/carriertypes', [WebhookController::class, 'get
 Route::middleware([])
     ->match(['get', 'post'], 'agent/consent', [WebhookController::class, 'getAgentConsent'])
     ->name('agent.consent');
+Route::post('get/selected/agent', [WebhookController::class, 'updateProcessContactWithSelectedAgent'])->name('api.webhook.selected.agent');
