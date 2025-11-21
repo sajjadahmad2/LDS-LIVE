@@ -760,7 +760,7 @@ class WebhookController extends Controller
         }
 
         $agentId = $agent->id;
-
+ return response()->json(['message' => 'Data received successfully', 'data' => $agentId ]);
         // 2. If states array is empty → delete all states
         if (empty($validated['states'])) {
             AgentState::where('agent_id', $agentId)
