@@ -65,7 +65,7 @@ class WebhookController extends Controller
             if (count($agentids) <= 0) {
                 return response()->json(['error' => 'Agent not found'], 404);
             }
-            $leadTypeId = Campaign::where('id', $proccessContact->campaign_id)->first()->lead_type ?? 1;
+            // $leadTypeId = Campaign::where('id', $proccessContact->campaign_id)->first()->lead_type ?? 1;
             $agent      = $this->FindAnotherAgent($proccessContact, $proccessContact->campaign_id, $leadTypeId, $agentids);
                 dd($agent,$proccessContact->campaign_id,$leadTypeId,$agentids);
         }
