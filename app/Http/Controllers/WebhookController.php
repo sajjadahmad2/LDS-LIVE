@@ -797,7 +797,7 @@ class WebhookController extends Controller
             \Log::info("Deleted {$deletedCount} AgentState records for agent_id {$agentId}");
             // 6. Insert new state records
             foreach ($newStateIds as $stateId) {
-                AgentState::create([
+                $record=AgentState::create([
                     'agent_id'  => $agentId,
                     'state_id'  => $stateId,
                     'lead_type' => 2,
