@@ -334,6 +334,7 @@ class WebhookController extends Controller
                 'address'      => $data['location']['fullAddress'] ?? null,
                 'status'       => 'In Compelete',
                 'lead_type'    => $leadTypeId,
+                'campaign_id'  => $camid,
                 // 'user_id' => $user->id ?? null,
             ];
 
