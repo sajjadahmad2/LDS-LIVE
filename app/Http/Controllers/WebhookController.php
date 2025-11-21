@@ -819,7 +819,7 @@ class WebhookController extends Controller
 
         } catch (\Throwable $e) {
             // Log the error
-            Log::error('Error in updateAgentStatesFromPortal: ' . $e->getMessage(), [
+            \Log::error('Error in updateAgentStatesFromPortal: ' . $e->getMessage(), [
                 'stack'   => $e->getTraceAsString(),
                 'request' => $request->all(),
             ]);
