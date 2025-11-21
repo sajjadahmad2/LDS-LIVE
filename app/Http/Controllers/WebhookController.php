@@ -791,7 +791,7 @@ class WebhookController extends Controller
             AgentState::where('agent_id', $agentId)
                 ->where('lead_type', 2)
                 ->delete();
-
+            return response()->json(['message' => 'yahn tak ayaa','data'=>json_encode($newStateIds)]);
             // 6. Insert new state records
             foreach ($newStateIds as $stateId) {
                 AgentState::create([
