@@ -50,6 +50,7 @@ class WebhookController extends Controller
         $leadTypeId = findLeadTypeId($lead_type);
 
         $proccessContact = ProccessContact::where('email', $validated['email'])->first();
+        dd($proccessContact);
         if (! $proccessContact) {
             return response()->json(['error' => 'Contact with this email is not found'], 404);
         }
