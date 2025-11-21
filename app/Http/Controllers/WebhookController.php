@@ -6,15 +6,15 @@ use App\Jobs\ProcessWebhookDataLead; // To handle incoming requests
 use App\Models\Agent;                // Model for Campaign table
 use App\Models\AgentCarrierType;     // Model for Agent table
 use App\Models\AgentLeadType;        // Model for Contact table
+use App\Models\AgentState;
 use App\Models\Campaign;
-use App\Models\CampaignAgent;
-use App\Models\State;                     // Model for User table
-use App\Models\AgentState;                     // Model for User table
-use App\Models\Contact;         // Model for ReserveContact table
+use App\Models\CampaignAgent;   // Model for User table
+use App\Models\Contact;         // Model for User table
 use App\Models\Log as Logs;     // Model for ReserveContact table
-use App\Models\ProccessContact; // Model for Agent Carrier Type table
-use App\Models\ReserveContact;  // Model for the Campaign-Agent mapping
-use App\Models\SaveJobLog;      // For logging
+use App\Models\ProccessContact; // Model for ReserveContact table
+use App\Models\ReserveContact;  // Model for Agent Carrier Type table
+use App\Models\SaveJobLog;      // Model for the Campaign-Agent mapping
+use App\Models\State;           // For logging
 use App\Models\User;            // For database queries
 use Carbon\Carbon;              // For date and time manipulation
 use Illuminate\Http\Request;
@@ -65,16 +65,15 @@ class WebhookController extends Controller
             if (count($agentids) <= 0) {
                 return response()->json(['error' => 'Agent not found'], 404);
             }
-            // $leadTypeId = Campaign::where('id', $proccessContact->campaign_id)->first()->lead_type ?? 1;
-            $agent      = $this->FindAnotherAgent($proccessContact, $proccessContact->campaign_id, $leadTypeId, $agentids);
+            $leadTypeId = Campaign::where('id', $proccessContact->campaign_id)->first()->lead_type ?? 1;
+            $agent = $this->FindAnotherAgent($proccessContact, $proccessContact->campaign_id, $leadTypeId, $agentids);
+            if (is_null($agent)) {
+                return response()->json(['error' => 'Agent not found'], 404);
+            }
 
-        }
-        if (is_null($agent)) {
-            return response()->json(['error' => 'Agent not found'], 404);
         }
         if ($validated['lead_type'] === 'Medicare') {
             $agentData = $this->getAgentDetailsFromPortal($agent->email, $proccessContact->state);
-
 
             return response()->json([
                 'success'    => true,
