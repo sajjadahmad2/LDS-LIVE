@@ -774,7 +774,7 @@ class WebhookController extends Controller
                 AgentState::where('agent_id', $agentId)
                     ->where('lead_type', 2)
                     ->delete();
-return response()->json(['message' => 'yahn tak ayaa','data'=>json_encode($validated['states'])]);
+
                 return response()->json(['message' => 'Data received successfully']);
             }
 
@@ -788,10 +788,13 @@ return response()->json(['message' => 'yahn tak ayaa','data'=>json_encode($valid
             $newStateIds = $matchedStates->pluck('id')->toArray();
             \Log::info('agentid;' . json_encode($newStateIds));
             // 5. Delete old records
-            AgentState::where('agent_id', $agentId)
+// 5. Delete old records
+            $deletedCount = AgentState::where('agent_id', $agentId)
                 ->where('lead_type', 2)
                 ->delete();
 
+// Log how many records were deleted
+            \Log::info("Deleted {$deletedCount} AgentState records for agent_id {$agentId}");
             // 6. Insert new state records
             foreach ($newStateIds as $stateId) {
                 AgentState::create([
@@ -799,6 +802,15 @@ return response()->json(['message' => 'yahn tak ayaa','data'=>json_encode($valid
                     'state_id'  => $stateId,
                     'lead_type' => 2,
                     'user_id'   => 128,
+                ]);
+
+                // Log each insertion
+                \Log::info("Inserted AgentState record", [
+                    'agent_state_id' => $record->id,
+                    'agent_id'       => $agentId,
+                    'state_id'       => $stateId,
+                    'lead_type'      => 2,
+                    'user_id'        => 128,
                 ]);
             }
 
