@@ -59,7 +59,7 @@ class WebhookController extends Controller
             $reason = $result['reason'];
 
             // Log or return error
-            \Log::warning('No agents found for contact ' . $contact->id . ': ' . $reason);
+            \Log::warning('No agents found for contact ' . $proccessContact->id . ': ' . $reason);
 
             // If in API context, you can return JSON
             return response()->json([
@@ -87,8 +87,15 @@ class WebhookController extends Controller
 
         // }
         if ($validated['lead_type'] === 'Medicare') {
-            $emailList      = $result['agents'];
-            $allAgents      = $this->getAgentDetailsFromPortal(null, $proccessContact->state);
+            $emailList = $result['agents'];
+            $agentData = [];
+            $allAgents = $this->getAgentDetailsFromPortal(null, $proccessContact->state);
+            if (empty($allAgents)) {
+                return response()->json([
+                    'success'    => true,
+                    'agent_data' => $agentData,
+                ]);
+            }
             $agentData = collect($allAgents['agents'])->filter(function ($agent) use ($emailList) {
                 return in_array($agent['email'], $emailList);
             })->values()->toArray();
@@ -746,72 +753,72 @@ class WebhookController extends Controller
             \Log::info("Created new ReserveContact with contact ID: {$contact_id}");
         }
     }
-   public function updateAgentStatesFromPortal(Request $request)
-{
-    try {
-        $validated = $request->validate([
-            'email'  => 'required|email',
-            'states' => 'nullable|array', // short_form codes
-        ]);
+    public function updateAgentStatesFromPortal(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'email'  => 'required|email',
+                'states' => 'nullable|array', // short_form codes
+            ]);
 
-        // 1. Find agent by email
-        $agent = Agent::where('email', $validated['email'])->first();
-        if (! $agent) {
-            return response()->json(['message' => 'Agent not found'], 404);
-        }
+            // 1. Find agent by email
+            $agent = Agent::where('email', $validated['email'])->first();
+            if (! $agent) {
+                return response()->json(['message' => 'Agent not found'], 404);
+            }
 
-        $agentId = $agent->id;
-        \Log::info('agentid;'.$agentId);
-        // 2. If states array is empty → delete all states
-        if (empty($validated['states'])) {
+            $agentId = $agent->id;
+            \Log::info('agentid;' . $agentId);
+            // 2. If states array is empty → delete all states
+            if (empty($validated['states'])) {
+                AgentState::where('agent_id', $agentId)
+                    ->where('lead_type', 2)
+                    ->delete();
+
+                return response()->json(['message' => 'Data received successfully']);
+            }
+
+            // 3. Lowercase incoming short_form values
+            $incomingShortForms = array_map('strtolower', $validated['states']);
+
+            // 4. Match DB short_form (case-insensitive)
+            $matchedStates = State::whereIn(\DB::raw('LOWER(short_form)'), $incomingShortForms)->get();
+
+            // Get IDs
+            $newStateIds = $matchedStates->pluck('id')->toArray();
+            \Log::info('agentid;' . json_encode($newStateIds));
+            // 5. Delete old records
             AgentState::where('agent_id', $agentId)
                 ->where('lead_type', 2)
                 ->delete();
 
+            // 6. Insert new state records
+            foreach ($newStateIds as $stateId) {
+                AgentState::create([
+                    'agent_id'  => $agentId,
+                    'state_id'  => $stateId,
+                    'lead_type' => 2,
+                    'user_id'   => 128,
+                ]);
+            }
+
+            // 7. Return success
             return response()->json(['message' => 'Data received successfully']);
-        }
 
-        // 3. Lowercase incoming short_form values
-        $incomingShortForms = array_map('strtolower', $validated['states']);
-
-        // 4. Match DB short_form (case-insensitive)
-        $matchedStates = State::whereIn(\DB::raw('LOWER(short_form)'), $incomingShortForms)->get();
-
-        // Get IDs
-        $newStateIds = $matchedStates->pluck('id')->toArray();
-        \Log::info('agentid;'.json_encode($newStateIds));
-        // 5. Delete old records
-        AgentState::where('agent_id', $agentId)
-            ->where('lead_type', 2)
-            ->delete();
-
-        // 6. Insert new state records
-        foreach ($newStateIds as $stateId) {
-            AgentState::create([
-                'agent_id'  => $agentId,
-                'state_id'  => $stateId,
-                'lead_type' => 2,
-                'user_id'   => 128,
+        } catch (\Throwable $e) {
+            // Log the error
+            Log::error('Error in updateAgentStatesFromPortal: ' . $e->getMessage(), [
+                'stack'   => $e->getTraceAsString(),
+                'request' => $request->all(),
             ]);
+
+            // Return the actual error in response
+            return response()->json([
+                'message' => 'Error occurred',
+                'error'   => $e->getMessage(),
+            ], 500);
         }
-
-        // 7. Return success
-        return response()->json(['message' => 'Data received successfully']);
-
-    } catch (\Throwable $e) {
-        // Log the error
-        Log::error('Error in updateAgentStatesFromPortal: ' . $e->getMessage(), [
-            'stack' => $e->getTraceAsString(),
-            'request' => $request->all(),
-        ]);
-
-        // Return the actual error in response
-        return response()->json([
-            'message' => 'Error occurred',
-            'error' => $e->getMessage()
-        ], 500);
     }
-}
     public function updateProcessContactWithSelectedAgent(Request $request)
     {
         $validated = $request->validate([
