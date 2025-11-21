@@ -746,8 +746,9 @@ class WebhookController extends Controller
             \Log::info("Created new ReserveContact with contact ID: {$contact_id}");
         }
     }
-    public function updateAgentStatesFromPortal(Request $request)
-    {
+   public function updateAgentStatesFromPortal(Request $request)
+{
+    try {
         $validated = $request->validate([
             'email'  => 'required|email',
             'states' => 'nullable|array', // short_form codes
@@ -756,11 +757,11 @@ class WebhookController extends Controller
         // 1. Find agent by email
         $agent = Agent::where('email', $validated['email'])->first();
         if (! $agent) {
-            return response()->json(['message' => 'Data received successfully']);
+            return response()->json(['message' => 'Agent not found'], 404);
         }
 
         $agentId = $agent->id;
- return response()->json(['message' => 'Data received successfully', 'data' => $agentId ]);
+        \Log::info('agentid;'.$agentId);
         // 2. If states array is empty → delete all states
         if (empty($validated['states'])) {
             AgentState::where('agent_id', $agentId)
@@ -778,7 +779,7 @@ class WebhookController extends Controller
 
         // Get IDs
         $newStateIds = $matchedStates->pluck('id')->toArray();
-
+        \Log::info('agentid;'.json_encode($newStateIds));
         // 5. Delete old records
         AgentState::where('agent_id', $agentId)
             ->where('lead_type', 2)
@@ -794,9 +795,23 @@ class WebhookController extends Controller
             ]);
         }
 
-        // 7. Always return this
+        // 7. Return success
         return response()->json(['message' => 'Data received successfully']);
+
+    } catch (\Throwable $e) {
+        // Log the error
+        Log::error('Error in updateAgentStatesFromPortal: ' . $e->getMessage(), [
+            'stack' => $e->getTraceAsString(),
+            'request' => $request->all(),
+        ]);
+
+        // Return the actual error in response
+        return response()->json([
+            'message' => 'Error occurred',
+            'error' => $e->getMessage()
+        ], 500);
     }
+}
     public function updateProcessContactWithSelectedAgent(Request $request)
     {
         $validated = $request->validate([
