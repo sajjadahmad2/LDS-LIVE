@@ -61,13 +61,13 @@ class WebhookController extends Controller
         if (isset($validated['graylisted_agents']) && ! empty($validated['graylisted_agents']) && count($validated['graylisted_agents']) > 0) {
             $graylisted_agents = $validated['graylisted_agents'];
             $agentids          = Agent::where('email', $graylisted_agents)->pluck('id')->toArray();
-            dd($agentids);
+
             if (count($agentids) <= 0) {
                 return response()->json(['error' => 'Agent not found'], 404);
             }
             $leadTypeId = Campaign::where('id', $proccessContact->campaign_id)->first()->lead_type ?? 1;
             $agent      = $this->FindAnotherAgent($proccessContact, $proccessContact->campaign_id, $leadTypeId, $agentids);
-
+                dd($agent,$leadTypeId);
         }
         if (is_null($agent)) {
             return response()->json(['error' => 'Agent not found'], 404);
