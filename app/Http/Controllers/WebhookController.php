@@ -812,7 +812,7 @@ class WebhookController extends Controller
         $agentId = $agent->id;
 
         // 2. Find lead by email
-        $lead = ProcessContact::where('email', $validated['lead_email'])->first();
+        $lead = ProccessContact::where('email', $validated['lead_email'])->first();
         if (! $lead) {
             return response()->json(['message' => 'Lead not found']);
         }
