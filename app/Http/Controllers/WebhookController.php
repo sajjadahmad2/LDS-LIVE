@@ -86,9 +86,12 @@ class WebhookController extends Controller
 
         // }
         if ($validated['lead_type'] === 'Medicare') {
-            $agentData = [];
-            $allAgents=$this->getAgentDetailsFromPortal(null,$proccessContact->state);
-        dd($allAgents);
+            $emailList      = $result['agents'];
+            $allAgents      = $this->getAgentDetailsFromPortal(null, $proccessContact->state);
+            $agentData = collect($allAgents['agents'])->filter(function ($agent) use ($emailList) {
+                return in_array($agent['email'], $emailList);
+            })->values()->toArray();
+
             return response()->json([
                 'success'    => true,
                 'agent_data' => $agentData,
@@ -159,7 +162,7 @@ class WebhookController extends Controller
         $data = json_decode($response, true);
 
         // Optional: check if response has expected structure
-        if (! isset($data['agents']) ) {
+        if (! isset($data['agents'])) {
             return null;
         }
 
@@ -796,8 +799,8 @@ class WebhookController extends Controller
     public function updateProcessContactWithSelectedAgent(Request $request)
     {
         $validated = $request->validate([
-            'agent_email'  => 'required|email',
-            'lead_email' => 'required|email',
+            'agent_email' => 'required|email',
+            'lead_email'  => 'required|email',
         ]);
 
         // 1. Find agent by email
