@@ -138,7 +138,12 @@ class WebhookController extends Controller
         $stateLower = strtolower($state);
 
         // Get state abbreviation from DB
-        $stateRecord = State::whereRaw('LOWER(state) = ?', [$stateLower])->first();
+        $stateLower = strtolower(trim($state));
+
+        $stateRecord = State::where(function ($q) use ($stateLower) {
+            $q->where(DB::raw('TRIM(LOWER(state))'), $stateLower)
+                ->orWhere(DB::raw('TRIM(LOWER(short_form))'), $stateLower);
+        })->first();
         if (! $stateRecord) {
             return null; // state not found
         }
@@ -797,7 +802,7 @@ class WebhookController extends Controller
             \Log::info("Deleted {$deletedCount} AgentState records for agent_id {$agentId}");
             // 6. Insert new state records
             foreach ($newStateIds as $stateId) {
-                $record=AgentState::create([
+                $record = AgentState::create([
                     'agent_id'  => $agentId,
                     'state_id'  => $stateId,
                     'lead_type' => 3,
