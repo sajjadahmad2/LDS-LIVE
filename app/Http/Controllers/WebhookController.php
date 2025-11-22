@@ -772,7 +772,7 @@ class WebhookController extends Controller
             // 2. If states array is empty → delete all states
             if (empty($validated['states'])) {
                 AgentState::where('agent_id', $agentId)
-                    ->where('lead_type', 2)
+                    ->where('lead_type', 3)
                     ->delete();
 
                 return response()->json(['message' => 'Data received successfully']);
@@ -790,7 +790,7 @@ class WebhookController extends Controller
             // 5. Delete old records
 // 5. Delete old records
             $deletedCount = AgentState::where('agent_id', $agentId)
-                ->where('lead_type', 2)
+                ->where('lead_type', 3)
                 ->delete();
 
 // Log how many records were deleted
@@ -809,7 +809,7 @@ class WebhookController extends Controller
                     'agent_state_id' => $record->id,
                     'agent_id'       => $agentId,
                     'state_id'       => $stateId,
-                    'lead_type'      => 2,
+                    'lead_type'      => 3,
                     'user_id'        => 128,
                 ]);
             }
