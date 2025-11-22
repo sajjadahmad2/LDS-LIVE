@@ -800,7 +800,7 @@ class WebhookController extends Controller
                 $record=AgentState::create([
                     'agent_id'  => $agentId,
                     'state_id'  => $stateId,
-                    'lead_type' => 2,
+                    'lead_type' => 3,
                     'user_id'   => 128,
                 ]);
 
