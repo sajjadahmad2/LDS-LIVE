@@ -716,8 +716,8 @@ class ProcessWebhookData implements ShouldQueue
             $campagent = CampaignAgent::where('agent_id', $agent->id)->where('campaign_id', $campaign->id)->first();
             $campagent->decrement('agent_count_weightage', 1);
         }
-        $type           = $data['customData'];
-        $contact_id     = $data['contact_id'];
+        $type           = isset($data['customData']) ? $data['customData'] : null;
+        $contact_id     = isset($data['contact_id']) ? $data['contact_id'] : null;
         $my_signature   = json_encode($data['I have reviewed my application information above, and here is my signature.'] ?? null);
         $reserveContact = ReserveContact::where('email', $data['email'] ?? '')->first();
         $contactData    = CreateContactData($data, $agent, $campaign, false, false, $leadTypeId);
