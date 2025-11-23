@@ -302,7 +302,7 @@ class WebhookController extends Controller
 
     protected function handleSurveySubmission($contactId, $state, $data, $campaignId)
     {
-        \Log::info('Survey Submission from Automation', json_encode($data));
+\Log::info('Survey Submission from to Check Automation', ['data' => $data]);
 
         Logs::updateOrCreate(
             ['contact_id' => $contactId],
