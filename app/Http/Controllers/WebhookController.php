@@ -253,6 +253,8 @@ class WebhookController extends Controller
 // \Log::info("RAW:", [file_get_contents('php://input')]);
 
         $data           = $request->all();
+                return response()->json(['message' => 'Webhook received. Processing in background.', 'data' => $data], 202);
+
         $type           = $data['type'] ?? null;
         $customType     = $data['customData']['type'] ?? null;
         $contactId      = $data['contact_id'] ?? null;
