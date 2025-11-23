@@ -2052,7 +2052,12 @@ function CreateContactData($data, $agent = null, $campaign, $json = true, $dbcon
         'city'                                        => $data['city'] ?? null,
         'state'                                       => $data['state'] ?? null,
         'postal_code'                                 => $data['postal_code'] ?? null,
-        'location_id'                                 => $dbcon? (isset($data['location_id']) ? $data['location_id'] : ($data['location']['id'] ?? null)): null,
+        'location_id'                                 => $dbcon
+            ? (isset($data['location']) && isset($data['location']['id'])
+                ? $data['location']['id']
+                : (isset($data['location_id']) ? $data['location_id'] : null)
+        )
+            : null,
         'contact_id'                                  => $data['contact_id'] ?? null,
         'location'                                    => $dbcon ? $data['location'] : json_encode($data['location']) ?? null,
         'address'                                     => $dbcon ? $data['address'] : $data['location']['fullAddress'] ?? null,
