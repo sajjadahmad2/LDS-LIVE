@@ -128,6 +128,11 @@ class WebhookController extends Controller
             'agent_data' => $agentData,
         ]);
     }
+    public function testWebhook(Request $request){
+
+        $data = $request->all();
+        return response()->json(['message' => 'Webhook received. Processing in background.', 'data' => $data], 202);
+    }
     public function getAgentDetailsFromPortal($agent = null, $state = null)
     {
         if (! $state) {
@@ -252,8 +257,8 @@ class WebhookController extends Controller
 // \Log::info("ALL:", request()->all());
 // \Log::info("RAW:", [file_get_contents('php://input')]);
 
-        $data           = $request->all();
-                return response()->json(['message' => 'Webhook received. Processing in background.', 'data' => $data], 202);
+        $data = $request->all();
+        return response()->json(['message' => 'Webhook received. Processing in background.', 'data' => $data], 202);
 
         $type           = $data['type'] ?? null;
         $customType     = $data['customData']['type'] ?? null;
@@ -307,7 +312,7 @@ class WebhookController extends Controller
 
     protected function handleSurveySubmission($contactId, $state, $data, $campaignId)
     {
-\Log::info('Survey Submission from to Check Automation', ['data' => $data]);
+        \Log::info('Survey Submission from to Check Automation', ['data' => $data]);
 
         Logs::updateOrCreate(
             ['contact_id' => $contactId],
@@ -316,7 +321,7 @@ class WebhookController extends Controller
                 'name'       => $data['first_name'] ?? 'No name',
                 'email'      => $data['email'] ?? null,
                 'state'      => $state,
-                'reason' => 'Only save this webhook data ' . (isset($data['contact_source']) ? $data['contact_source'] : null),
+                'reason'     => 'Only save this webhook data ' . (isset($data['contact_source']) ? $data['contact_source'] : null),
                 'message'    => json_encode($data),
             ]
         );
@@ -813,7 +818,6 @@ class WebhookController extends Controller
                     'lead_type' => 3,
                     'user_id'   => 128,
                 ]);
-
 
             }
 
