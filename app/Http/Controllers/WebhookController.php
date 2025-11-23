@@ -249,6 +249,8 @@ class WebhookController extends Controller
     }
     public function handleWebhookUrl(Request $request, $campaignIdParam)
     {
+        \Log::info('Check Data', ['data' => $request->all()]);
+
         $data           = $request->all();
         $type           = $data['type'] ?? null;
         $customType     = $data['customData']['type'] ?? null;
