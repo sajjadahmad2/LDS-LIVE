@@ -311,7 +311,7 @@ class WebhookController extends Controller
                 'name'       => $data['first_name'] ?? 'No name',
                 'email'      => $data['email'] ?? null,
                 'state'      => $state,
-                'reason'     => 'Only save this webhook data ' . $data['contact_source'] ?? null,
+                'reason'     => 'Only save this webhook data ' . isse($data['contact_source']) ? $data['contact_source'] : null,
                 'message'    => json_encode($data),
             ]
         );
@@ -809,7 +809,7 @@ class WebhookController extends Controller
                     'user_id'   => 128,
                 ]);
 
-                
+
             }
 
             // 7. Return success
