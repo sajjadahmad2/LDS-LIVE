@@ -314,7 +314,7 @@ class WebhookController extends Controller
 
     protected function handleSurveySubmission($contactId, $state, $data, $campaignId)
     {
-        \Log::info('Survey Submission from to Check Automation', ['data' => $data]);
+        // \Log::info('Survey Submission from to Check Automation', ['data' => $data]);
 
         Logs::updateOrCreate(
             ['contact_id' => $contactId],
@@ -329,8 +329,8 @@ class WebhookController extends Controller
         );
 
         appendJobLog($contactId, 'Survey Submitted');
-        \Log::info("ye wala Chek kar ra:", request()->all());
-        return response()->json(['message' => 'Webhook received. Processing in background.', 'data' => $data], 202);
+        // \Log::info("ye wala Chek kar ra:", request()->all());
+        // return response()->json(['message' => 'Webhook received. Processing in background.', 'data' => $data], 202);
         ProcessWebhookData::dispatch($data, $campaignId);
 
         return response()->json(['message' => 'Webhook received. Processing in background.'], 202);
