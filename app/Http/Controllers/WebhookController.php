@@ -277,8 +277,7 @@ class WebhookController extends Controller
         if ($customType === 'ContactCreate') {
             return $this->handleCustomContactCreateType($contactId, $state, $request, $campaignId);
         }
-        \Log::info("ALL:", request()->all());
-        return response()->json(['message' => 'Webhook received. Processing in background.', 'data' => $data], 202);
+
         return $this->handleSurveySubmission($contactId, $state, $data, $campaignId);
     }
 
@@ -330,7 +329,8 @@ class WebhookController extends Controller
         );
 
         appendJobLog($contactId, 'Survey Submitted');
-
+        \Log::info("ye wala Chek kar ra:", request()->all());
+        return response()->json(['message' => 'Webhook received. Processing in background.', 'data' => $data], 202);
         ProcessWebhookData::dispatch($data, $campaignId);
 
         return response()->json(['message' => 'Webhook received. Processing in background.'], 202);
