@@ -261,7 +261,7 @@ class WebhookController extends Controller
         // \Log::info("RAW:", [file_get_contents('php://input')]);
 
         $data = $request->all();
-        // return response()->json(['message' => 'Webhook received. Processing in background.', 'data' => $data], 202);
+
         $type           = $data['type'] ?? null;
         $customType     = $data['customData']['type'] ?? null;
         $contactId      = $data['contact_id'] ?? null;
@@ -277,7 +277,8 @@ class WebhookController extends Controller
         if ($customType === 'ContactCreate') {
             return $this->handleCustomContactCreateType($contactId, $state, $request, $campaignId);
         }
-
+        \Log::info("ALL:", request()->all());
+        return response()->json(['message' => 'Webhook received. Processing in background.', 'data' => $data], 202);
         return $this->handleSurveySubmission($contactId, $state, $data, $campaignId);
     }
 
@@ -918,8 +919,8 @@ class WebhookController extends Controller
         if ($response && property_exists($response, 'contact') && count($response->contact) > 0) {
             $contactId = $data['contacts'][0]['id'] ?? null;
             $url       = 'contacts/' . $contactId;
-            $updateCF=\App\Helpers\CRM::crmV2($agent->user_id, $url, 'POST', $newdata, [], false, $agent->agentLeadTypes->first()->destination_location);
-            if($updateCF->succeded){
+            $updateCF  = \App\Helpers\CRM::crmV2($agent->user_id, $url, 'POST', $newdata, [], false, $agent->agentLeadTypes->first()->destination_location);
+            if ($updateCF->succeded) {
                 return response()->json(['message' => 'Data received successfully']);
             }
         }
