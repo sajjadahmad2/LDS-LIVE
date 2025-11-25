@@ -128,9 +128,12 @@ class WebhookController extends Controller
             'agent_data' => $agentData,
         ]);
     }
-    public function testWebhook(Request $request){
+    public function testWebhook(Request $request)
+    {
 
         $data = $request->all();
+        \Log::info('Webhook received: ' . json_encode($data));
+        \Log::info('Webhook received: ' . json_encode($request->getContent()));
         return response()->json(['message' => 'Webhook received. Processing in background.', 'data' => $data], 202);
     }
     public function getAgentDetailsFromPortal($agent = null, $state = null)
@@ -254,12 +257,11 @@ class WebhookController extends Controller
     }
     public function handleWebhookUrl(Request $request, $campaignIdParam)
     {
-// \Log::info("ALL:", request()->all());
-// \Log::info("RAW:", [file_get_contents('php://input')]);
+        // \Log::info("ALL:", request()->all());
+        // \Log::info("RAW:", [file_get_contents('php://input')]);
 
         $data = $request->all();
         // return response()->json(['message' => 'Webhook received. Processing in background.', 'data' => $data], 202);
-
         $type           = $data['type'] ?? null;
         $customType     = $data['customData']['type'] ?? null;
         $contactId      = $data['contact_id'] ?? null;
@@ -864,5 +866,106 @@ class WebhookController extends Controller
 
         return response()->json(['message' => 'Data received successfully']);
     }
+    public function updateProcessContactWithSelectedAgentNew(Request $request)
+    {
+        $validated = $request->validate([
+            'agent_email' => 'required|email',
+            'lead_email'  => 'required|email',
+        ]);
 
+        // 1. Find agent by email
+        $agent = Agent::where('email', $validated['agent_email'])->first();
+        if (! $agent) {
+            return response()->json(['message' => 'Agent not found']);
+        }
+
+        $agentId = $agent->id;
+
+        // 2. Find lead by email
+        $lead = ProccessContact::where('email', $validated['lead_email'])->first();
+        if (! $lead) {
+            return response()->json(['message' => 'Lead not found']);
+        }
+
+        $lead->agent_id = $agentId;
+        $lead->save();
+        $token = \App\Models\GhlAuth::where('location_id', $agent->agentLeadTypes->first()->destination_location)->where('user_id', $agent->user_id ?? '')->first();
+        if (! $token) {
+            sleep(15);
+            $token = $this->connectLocationFirst($agent);
+        }
+        $custom_field = [
+            (object) [
+                'id'          => "",
+                'key'         => "",
+                'field_value' => "",
+            ],
+        ];
+        $newdata['customFields'] = $custom_field;
+        $payload                 = [
+            'locationId' => '',
+            'filters'    => [
+                [
+                    'field'    => 'email',
+                    'operator' => 'eq',
+                    'value'    => $validated['lead_email'],
+                ],
+            ],
+        ];
+
+        $url      = 'contacts/search';
+        $response = \App\Helpers\CRM::crmV2($agent->user_id, $url, 'POST', $paylaod, [], false, $agent->agentLeadTypes->first()->destination_location);
+        if ($response && property_exists($response, 'contact') && count($response->contact) > 0) {
+            $contactId = $data['contacts'][0]['id'] ?? null;
+            $url       = 'contacts/' . $contactId;
+            $updateCF=\App\Helpers\CRM::crmV2($agent->user_id, $url, 'POST', $newdata, [], false, $agent->agentLeadTypes->first()->destination_location);
+            if($updateCF->succeded){
+                return response()->json(['message' => 'Data received successfully']);
+            }
+        }
+        return response()->json(['message' => 'Data received successfully']);
+    }
+    protected function connectLocationFirst($agent)
+    {
+        $token           = GhlAuth::where('user_id', $agent->user_id)->where('user_type', 'Company')->first();
+        $connectResponse = \App\Helpers\CRM::connectLocation($token->user_id, $agent->agentLeadTypes->first()->destination_location, $token);
+        //dd($locationId);
+        if (isset($connectResponse->location_id)) {
+            if ($connectResponse->statusCode == 400) {
+                \Log::error('Bad Request: Invalid locationId or accessToken', [
+                    'location_id' => $agent->agentLeadTypes->first()->destination_location,
+                    'user_id'     => $token->user_id,
+                    'response'    => $connectResponse,
+                ]);
+                return false;
+            }
+            $ghl = GhlAuth::where('location_id', $connectResponse->location_id)->where('user_id', $agent->user_id ?? '')->first();
+
+            $apicall = \App\Helpers\CRM::crmV2($agent->user_id, 'customFields', 'get', '', [], false, $connectResponse->location_id, $ghl);
+            if (isset($apicall->customFields)) {
+                $apiData = $apicall->customFields;
+                // dd($apiData);
+                foreach ($apiData as $field) {
+                    // Find existing custom field record
+                    $customField = \App\Models\CustomField::where('cf_id', $field->id)->where('location_id', $field->locationId)->first();
+                    // Prepare data array with custom field values
+                    $customFieldData = [
+                        'cf_id'       => $field->id ?? null,
+                        'cf_name'     => $field->name ?? null,
+                        'cf_key'      => $field->fieldKey ?? null,
+                        'dataType'    => $field->dataType ?? null,
+                        'location_id' => $field->locationId ?? null,
+                    ];
+                    if (! $customField) {
+                        $customField = new CustomField();
+                    }
+                    foreach ($customFieldData as $key => $value) {
+                        $customField->$key = $value;
+                    }
+                    $customField->save();
+                }
+            }
+            return $ghl;
+        }
+    }
 }
