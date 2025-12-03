@@ -255,7 +255,7 @@ class WebhookController extends Controller
             'agent_carriers' => $formattedCarrierTypes,
         ]);
     }
-    public function handleWebhookUrl1(Request $request, $campaignIdParam)
+    public function handleWebhookUrl1(Request $request, $campaignIdParam=null)
     {
         \Log::info("ALL:", $request->all());
         \Log::info("CAMPAIGNID:". $campaignIdParam);
