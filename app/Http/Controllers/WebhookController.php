@@ -128,7 +128,7 @@ class WebhookController extends Controller
             'agent_data' => $agentData,
         ]);
     }
-    public function handleWebhookUrl(Request $request, $campaignIdParam)
+    public function handleWebhookUrl(Request $request, $campaignIdParam=null)
     {
 
         $data = $request->all();
