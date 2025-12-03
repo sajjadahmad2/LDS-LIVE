@@ -2059,7 +2059,7 @@ function CreateContactData($data, $agent = null, $campaign, $json = true, $dbcon
         )
             : null,
         'contact_id'                                  => $data['contact_id'] ?? null,
-        'location'                                    => $dbcon ? $data['location'] : json_encode($data['location']) ?? null,
+        'location'                                    => $dbcon ? (isset($data['location'])? json_encode($data['location']) : null) : null,
         'address'                                     => $dbcon ? $data['address'] : $data['location']['fullAddress'] ?? null,
         'user_id'                                     => $agent ? $agent->user_id : null,
         'agent_id'                                    => $agent ? $agent->id : null,
