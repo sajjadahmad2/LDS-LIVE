@@ -257,8 +257,8 @@ class WebhookController extends Controller
     }
     public function handleWebhookData(Request $request, $campaignIdParam)
     {
-        \Log::info("ALL:", $request->all());
-        \Log::info("CAMPAIGNID:". $campaignIdParam);
+        \Log::info("ALL:", json_decode($request->getContent(), true));
+        \Log::info("CAMPAIGNID:",$request->getContent());
         \Log::info("RAW:", [file_get_contents('php://input')]);
 
         $data = $request->all();
