@@ -434,8 +434,9 @@ class AgentController extends Controller
             if (empty($usertoken)) {
                 return false;
             }
+            dd($location, $usertoken, $agenttoken,$usertoken->user_id);
             $locationId = \CRM::connectLocation($usertoken->user_id, $location, $usertoken);
-            dd($locationId);
+
             if (isset($locationId->location_id)) {
                 if ($locationId->statusCode == 400) {
                     \Log::error('Bad Request: Invalid locationId or accessToken', [
