@@ -372,6 +372,7 @@ class AgentController extends Controller
                     'destination_location' => $lead['destination_location'] ?? null,
                     'destination_webhook'  => $lead['destination_webhook'] ?? null,
                 ]);
+                dd($lead['destination_location']);
                 if(isset($lead['destination_location']) && !empty($lead['destination_location'])){
                     $agentLocations[] = $lead['destination_location'];
                 }
