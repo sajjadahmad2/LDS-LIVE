@@ -176,6 +176,7 @@ class AgentController extends Controller
 
         $states       = State::select('id', 'state')->get();
         $alllocations = CompanyLocation::all();
+        dd($alllocations);
         $leadTypes    = LeadType::select('id', 'name')->get();
         $carrierTypes=getAllCarrierType();
 
