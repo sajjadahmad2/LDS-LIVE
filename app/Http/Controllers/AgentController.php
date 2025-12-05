@@ -434,7 +434,7 @@ class AgentController extends Controller
             if (empty($usertoken)) {
                 return false;
             }
-            dd($location, $usertoken, $agenttoken,$usertoken->user_id);
+            dd($agentLocations);
             $locationId = \CRM::connectLocation($usertoken->user_id, $location, $usertoken);
 
             if (isset($locationId->location_id)) {
