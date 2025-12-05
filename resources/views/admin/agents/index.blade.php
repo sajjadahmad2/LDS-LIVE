@@ -790,6 +790,7 @@
                     // ===== Destination Location =====
                     const $dest = $(this).find(
                         `[name="lead_types[${leadTypeId}][destination_location]"]`);
+                        console.log(group.destination_location, $dest);
                     if (group.destination_location) {
                         // If option doesn't exist, create it
                         if ($dest.find(`option[value="${group.destination_location}"]`).length === 0) {
@@ -856,6 +857,7 @@
                 event.preventDefault(); // Prevent default form submission
 
                 let formData = $(this).serialize();
+                console.log(formData);
                 $.ajax({
                     type: "POST",
                     url: "{{ route('admin.agent.user.save') }}",
