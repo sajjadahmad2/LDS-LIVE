@@ -1,66 +1,99 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# LDS-LIVE — Lead Distribution System
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+LDS-LIVE is a Laravel-based lead management and distribution application. It receives lead/contact events, evaluates campaign and agent eligibility, records processing activity, and supports forwarding assigned contact data to GoHighLevel (GHL).
 
-## About Laravel
+> This guide describes the implementation visible in the repository. It does not imply that every integration or deployment has been tested end to end.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Core capabilities
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- Campaign management and campaign-to-agent configuration.
+- Agent profiles, lead types, state/carrier eligibility, delivery limits, and destination settings.
+- Inbound webhook handling for contact creation and survey submissions.
+- Agent eligibility and assignment using lead type, state, daily/monthly/total limits, priority, and weightage-related counters.
+- Contact processing, reserve handling, and operational logging.
+- GoHighLevel contact handoff.
+- Administrative dashboard, reporting, and user management.
+- External Medicare agent-directory lookup.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Technology
 
-## Learning Laravel
+The repository's composer.json declares PHP ^8.1, Laravel ^10.48, Laravel Sanctum ^3.3, Laravel UI ^4.5, Guzzle ^7.2, Predis ^2.3, and Yajra Laravel DataTables ^10.11. The application timezone is configured as America/Chicago.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## Application areas
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+| Area | Responsibility |
+|---|---|
+| Agents | Profiles, lead types, limits, states, carriers, and destinations |
+| Campaigns | Campaign definitions and campaign-agent configuration |
+| Contacts | Contact records and assigned lead history |
+| Processing / reserve | Intermediate processing and contacts without an eligible assignment |
+| Webhooks and jobs | External event intake and asynchronous processing |
+| Dashboard | Operational statistics and administrative views |
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+Further documentation:
+- [Architecture](docs/architecture.md)
+- [Installation](docs/installation.md)
+- [Security checklist](docs/security-checklist.md)
 
-## Laravel Sponsors
+## Local setup
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+The repository currently does not include a tracked .env.example or composer.lock. Use a secure local environment template and confirm required variables from the authorized deployment configuration.
 
-### Premium Partners
+1. Install PHP 8.1+, required Laravel PHP extensions, Composer, and a supported database.
+2. Clone the repository and install dependencies:
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+   ```bash
+   git clone https://github.com/sajjadahmad2/LDS-LIVE.git
+   cd LDS-LIVE
+   composer install
+   ```
 
-## Contributing
+3. Create a local .env file from a trusted template. Configure application, database, session, cache, queue, mail, and integration settings.
+4. Generate an application key:
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+   ```bash
+   php artisan key:generate
+   ```
 
-## Code of Conduct
+5. After confirming the configured database is a development database, run migrations:
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+   ```bash
+   php artisan migrate
+   ```
 
-## Security Vulnerabilities
+6. If required, create the storage link and start the development server:
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+   ```bash
+   php artisan storage:link
+   php artisan serve
+   ```
+
+7. If the queue connection is asynchronous, run a worker:
+
+   ```bash
+   php artisan queue:work
+   ```
+
+Do not run migrations against production as part of initial setup. Confirm frontend build requirements from the repository's package manifest before building assets.
+
+## Operational notes
+
+- Configure and monitor Laravel queue workers because webhook processing uses queued jobs.
+- Keep GHL and external agent-portal credentials in environment configuration or a secrets manager.
+- Review access controls for log downloads, database backup downloads, cleanup actions, and contact-data lookup routes before public exposure.
+- The current .gitignore excludes composer.lock. A reviewed lock file should normally be committed for reproducible application deployments.
+- Never commit .env files, API tokens, database passwords, customer records, production logs, or database dumps.
+
+## Testing
+
+The repository declares PHPUnit development dependencies. Run the available suite with:
+
+```bash
+php artisan test
+```
+
+Test coverage and end-to-end integration behavior have not been independently verified as part of this documentation update.
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+A project-specific LICENSE file was not identified during this review. Confirm licensing terms before reuse or redistribution.
